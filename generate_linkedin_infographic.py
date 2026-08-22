@@ -1,212 +1,155 @@
 #!/usr/bin/env python3
 """
-Generate a professional-grade LinkedIn Infographic for Gort Firewall.
-Outputs: linkedin_infographic.png (1920x1080, 16:9 4K-ready presentation asset)
+Generate a simplified, high-impact corporate LinkedIn Infographic for Gort Firewall.
+Centered on the core theme:
+"Don't be suspicious, just run this. You never know what's lurking on your Ubuntu workstation or laptop."
+Outputs: linkedin_infographic.png (1920x1080, 16:9 4K presentation asset)
 """
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-def draw_linkedin_infographic():
-    # 1920x1080 16:9 ultra-high clarity layout
+def draw_simplified_infographic():
     fig, ax = plt.subplots(figsize=(16, 9), dpi=150)
-    fig.patch.set_facecolor('#070b16')  # Ultra dark obsidian
-    ax.set_facecolor('#070b16')
+    fig.patch.set_facecolor('#080c18')  # Deep obsidian
+    ax.set_facecolor('#080c18')
     ax.set_xlim(0, 1600)
     ax.set_ylim(0, 900)
     ax.axis('off')
 
-    # Color System
+    # Color Palette
     cyan = '#00f0ff'
-    neon_blue = '#2979ff'
     emerald = '#00e676'
-    amber = '#ffab00'
-    coral = '#ff1744'
-    purple = '#d500f9'
+    coral = '#ff3d57'
+    purple = '#c084fc'
+    amber = '#ffb300'
     text_white = '#ffffff'
-    text_sub = '#cfd8dc'
-    text_muted = '#78909c'
-    card_bg = '#0e1628'
-    card_border = '#1c2d4a'
-    card_inner = '#141e34'
+    text_sub = '#cbd5e1'
+    card_bg = '#0f172a'
+    card_border = '#1e293b'
 
-    # --- TOP BRANDING HEADER ---
-    # Top Accent Glow Line
-    ax.plot([100, 1500], [875, 875], color=cyan, linewidth=2, alpha=0.8)
+    # Top Brand Bar
+    ax.plot([150, 1450], [865, 865], color=cyan, linewidth=2, alpha=0.9)
 
-    # Main Logo / Title
-    ax.text(800, 835, "GORT FIREWALL", fontsize=28, fontweight='bold',
+    # Main Headline (User's One-Liner in Large Bold Typography)
+    ax.text(800, 815, "Don't be suspicious, just run this.", fontsize=32, fontweight='bold',
             color=text_white, ha='center', va='center', fontfamily='sans-serif')
-    ax.text(800, 798, "Autonomous Linux Endpoint Defense  •  Zero-Trust Sentinel  •  Google Gemini AI",
-            fontsize=13, fontweight='bold', color=cyan, ha='center', va='center')
+    ax.text(800, 765, "You never know what's lurking on your Ubuntu workstation or laptop.",
+            fontsize=18, fontweight='bold', color=cyan, ha='center', va='center')
 
-    # Hook Banner (Highlighted Callout)
-    hook_box = patches.FancyBboxPatch((200, 740), 1200, 36, boxstyle="round,pad=4,rounding_size=8",
-                                     facecolor='#162238', edgecolor=neon_blue, linewidth=1.5)
-    ax.add_patch(hook_box)
-    ax.text(800, 758, "\"Don't just be suspicious — run this. You never know what's lurking in the background on your Linux machine.\"",
-            fontsize=11.5, fontweight='bold', fontstyle='italic', color='#e0f7fa', ha='center', va='center')
+    # Sub-tagline
+    ax.text(800, 715, "GORT — Open-Source Linux Terminal Firewall, Zero-Trust Sentinel & Google Gemini AI",
+            fontsize=13, color=text_sub, ha='center', va='center')
 
-    # --- 4 KEY PILLAR CARDS ---
-    card_w = 330
-    card_h = 515
-    y_pos = 195
-    spacing = 365
-    start_x = 75
+    # --- 3 SIMPLE, CLEAN CARDS ---
+    card_w = 420
+    card_h = 420
+    y_pos = 220
+    spacing = 460
+    start_x = 110
 
-    # Card 1: Autonomous Sentinel & Bad USB
+    # Card 1: What's Lurking?
     c1_x = start_x + 0 * spacing
-    c1 = patches.FancyBboxPatch((c1_x, y_pos), card_w, card_h, boxstyle="round,pad=8,rounding_size=12",
-                                facecolor=card_bg, edgecolor=coral, linewidth=1.8)
+    c1 = patches.FancyBboxPatch((c1_x, y_pos), card_w, card_h, boxstyle="round,pad=10,rounding_size=14",
+                                facecolor=card_bg, edgecolor=coral, linewidth=2)
     ax.add_patch(c1)
 
-    # Header 1
-    h1 = patches.FancyBboxPatch((c1_x + 10, y_pos + card_h - 48), card_w - 20, 38,
-                                boxstyle="round,pad=4,rounding_size=8",
-                                facecolor='#2a121e', edgecolor=coral, linewidth=1.2)
+    h1 = patches.FancyBboxPatch((c1_x + 15, y_pos + card_h - 60), card_w - 30, 46,
+                                boxstyle="round,pad=5,rounding_size=8",
+                                facecolor='#2c111e', edgecolor=coral, linewidth=1.5)
     ax.add_patch(h1)
-    ax.text(c1_x + card_w/2, y_pos + card_h - 29, "AUTONOMOUS SENTINEL", fontsize=11, fontweight='bold',
+    ax.text(c1_x + card_w/2, y_pos + card_h - 37, "1. SEE WHAT'S LURKING", fontsize=13, fontweight='bold',
             color='#ff5252', ha='center', va='center')
 
-    c1_bullets = [
-        ("Reverse Shell Shield", "Auto-detects bash -i, /dev/tcp, nc -e, python sockets in ms.", coral),
-        ("Bad USB Defense", "Trips on Rubber Ducky keystroke bursts & PoisonTap route hijacks.", amber),
-        ("Non-Destructive Freeze", "SIGSTOP pauses intruder in RAM without accidental data loss.", cyan),
-        ("1-Click Rollback [U]", "Instant restoration with SIGCONT & lifts Netfilter drops.", emerald),
-        ("Self-Healing TTL Decay", "15-minute temporary blocks auto-expire if unpinned.", text_sub),
+    bullets_1 = [
+        ("Transient Telemetry", "Catches beacons & sockets that close in milliseconds.", coral),
+        ("Reverse Shell Shield", "Auto-flags bash /dev/tcp, netcat & dropper scripts.", amber),
+        ("Bad USB Protection", "Neutralizes Rubber Ducky & PoisonTap hardware injects.", text_white),
+        ("Non-Destructive Freeze", "SIGSTOP pauses intruder in RAM with 1-click rollback [U].", emerald),
     ]
-
-    for idx, (title, desc, clr) in enumerate(c1_bullets):
-        by = y_pos + card_h - 90 - (idx * 84)
-        b_box = patches.FancyBboxPatch((c1_x + 12, by - 24), card_w - 24, 62,
-                                       boxstyle="round,pad=3,rounding_size=6",
-                                       facecolor=card_inner, edgecolor=card_border, linewidth=1)
-        ax.add_patch(b_box)
-        ax.text(c1_x + 22, by + 18, f">> {title}", fontsize=9.5, fontweight='bold', color=clr)
-        ax.text(c1_x + 22, by - 6, desc, fontsize=8, color=text_sub, wrap=True)
+    for idx, (title, desc, clr) in enumerate(bullets_1):
+        by = y_pos + card_h - 105 - (idx * 72)
+        ax.text(c1_x + 25, by + 12, f">>  {title}", fontsize=11, fontweight='bold', color=clr)
+        ax.text(c1_x + 25, by - 12, desc, fontsize=9.5, color=text_sub)
 
     # Card 2: Zero-Trust Continuous Verification
     c2_x = start_x + 1 * spacing
-    c2 = patches.FancyBboxPatch((c2_x, y_pos), card_w, card_h, boxstyle="round,pad=8,rounding_size=12",
-                                facecolor=card_bg, edgecolor=emerald, linewidth=1.8)
+    c2 = patches.FancyBboxPatch((c2_x, y_pos), card_w, card_h, boxstyle="round,pad=10,rounding_size=14",
+                                facecolor=card_bg, edgecolor=emerald, linewidth=2)
     ax.add_patch(c2)
 
-    h2 = patches.FancyBboxPatch((c2_x + 10, y_pos + card_h - 48), card_w - 20, 38,
-                                boxstyle="round,pad=4,rounding_size=8",
-                                facecolor='#0b261b', edgecolor=emerald, linewidth=1.2)
+    h2 = patches.FancyBboxPatch((c2_x + 15, y_pos + card_h - 60), card_w - 30, 46,
+                                boxstyle="round,pad=5,rounding_size=8",
+                                facecolor='#0b2c1e', edgecolor=emerald, linewidth=1.5)
     ax.add_patch(h2)
-    ax.text(c2_x + card_w/2, y_pos + card_h - 29, "ZERO-TRUST SCORING", fontsize=11, fontweight='bold',
+    ax.text(c2_x + card_w/2, y_pos + card_h - 37, "2. ZERO-TRUST SCORING", fontsize=13, fontweight='bold',
             color='#69f0ae', ha='center', va='center')
 
-    c2_bullets = [
-        ("Dynamic Trust Score", "Continuous 0-100 risk rating evaluated on every active packet flow.", emerald),
-        ("5 Micro-Segmentation Zones", "Isolates Loopback, LAN, Trusted Cloud, Public Web, High-Risk.", cyan),
-        ("Heuristic Anomaly Flags", "Flags /tmp execution, high-risk ports, missing reverse DNS.", amber),
-        ("10s Transient Memory", "Catches microsecond telemetry bursts & ephemeral beacons.", neon_blue),
-        ("Immutable Core Whitelist", "Systemd, SSHD & local DNS can never be killed or blocked.", text_sub),
+    bullets_2 = [
+        ("Trust Score (0–100)", "Live security grade calculated for every active connection.", emerald),
+        ("5 Network Zones", "Micro-segments Loopback, LAN, Trusted Cloud & High-Risk.", cyan),
+        ("Process Provenance", "Maps sockets to PID, executable path, cmdline & user.", text_white),
+        ("Zero False Positives", "Core whitelist protects systemd, SSHD & local DNS.", text_sub),
     ]
-
-    for idx, (title, desc, clr) in enumerate(c2_bullets):
-        by = y_pos + card_h - 90 - (idx * 84)
-        b_box = patches.FancyBboxPatch((c2_x + 12, by - 24), card_w - 24, 62,
-                                       boxstyle="round,pad=3,rounding_size=6",
-                                       facecolor=card_inner, edgecolor=card_border, linewidth=1)
-        ax.add_patch(b_box)
-        ax.text(c2_x + 22, by + 18, f">> {title}", fontsize=9.5, fontweight='bold', color=clr)
-        ax.text(c2_x + 22, by - 6, desc, fontsize=8, color=text_sub, wrap=True)
+    for idx, (title, desc, clr) in enumerate(bullets_2):
+        by = y_pos + card_h - 105 - (idx * 72)
+        ax.text(c2_x + 25, by + 12, f">>  {title}", fontsize=11, fontweight='bold', color=clr)
+        ax.text(c2_x + 25, by - 12, desc, fontsize=9.5, color=text_sub)
 
     # Card 3: Google Gemini AI Copilot
     c3_x = start_x + 2 * spacing
-    c3 = patches.FancyBboxPatch((c3_x, y_pos), card_w, card_h, boxstyle="round,pad=8,rounding_size=12",
-                                facecolor=card_bg, edgecolor=purple, linewidth=1.8)
+    c3 = patches.FancyBboxPatch((c3_x, y_pos), card_w, card_h, boxstyle="round,pad=10,rounding_size=14",
+                                facecolor=card_bg, edgecolor=purple, linewidth=2)
     ax.add_patch(c3)
 
-    h3 = patches.FancyBboxPatch((c3_x + 10, y_pos + card_h - 48), card_w - 20, 38,
-                                boxstyle="round,pad=4,rounding_size=8",
-                                facecolor='#270f38', edgecolor=purple, linewidth=1.2)
+    h3 = patches.FancyBboxPatch((c3_x + 15, y_pos + card_h - 60), card_w - 30, 46,
+                                boxstyle="round,pad=5,rounding_size=8",
+                                facecolor='#27103d', edgecolor=purple, linewidth=1.5)
     ax.add_patch(h3)
-    ax.text(c3_x + card_w/2, y_pos + card_h - 29, "GOOGLE GEMINI AI", fontsize=11, fontweight='bold',
-            color='#ea80fc', ha='center', va='center')
+    ax.text(c3_x + card_w/2, y_pos + card_h - 37, "3. GOOGLE GEMINI AI", fontsize=13, fontweight='bold',
+            color='#e879f9', ha='center', va='center')
 
-    c3_bullets = [
-        ("Plain-English Explain [E]", "Translates complex hex telemetry into clear 2-sentence safety summaries.", purple),
-        ("Interactive Copilot [A]", "Natural language Q&A: 'Is my system safe?', 'Why is Chrome uploading?'.", cyan),
-        ("Antigravity SDK Bridge", "Native integration with google.antigravity Agent workflow.", neon_blue),
-        ("Google Account / API Key", "Seamlessly supports GEMINI_API_KEY, config.json & OAuth.", emerald),
-        ("Offline Fallback Mode", "Zero downtime: switches automatically to local heuristics.", text_sub),
+    bullets_3 = [
+        ("Plain-English [E]", "Translates complex hex telemetry into 2-sentence summaries.", purple),
+        ("Ask Copilot [A]", "Chat with AI: 'Is this safe?', 'Why is this app connecting?'.", cyan),
+        ("Google Account Ready", "Supports Antigravity SDK, GEMINI_API_KEY & OAuth.", text_white),
+        ("Offline Fallback", "Always works offline with local heuristic engine.", emerald),
     ]
+    for idx, (title, desc, clr) in enumerate(bullets_3):
+        by = y_pos + card_h - 105 - (idx * 72)
+        ax.text(c3_x + 25, by + 12, f">>  {title}", fontsize=11, fontweight='bold', color=clr)
+        ax.text(c3_x + 25, by - 12, desc, fontsize=9.5, color=text_sub)
 
-    for idx, (title, desc, clr) in enumerate(c3_bullets):
-        by = y_pos + card_h - 90 - (idx * 84)
-        b_box = patches.FancyBboxPatch((c3_x + 12, by - 24), card_w - 24, 62,
-                                       boxstyle="round,pad=3,rounding_size=6",
-                                       facecolor=card_inner, edgecolor=card_border, linewidth=1)
-        ax.add_patch(b_box)
-        ax.text(c3_x + 22, by + 18, f">> {title}", fontsize=9.5, fontweight='bold', color=clr)
-        ax.text(c3_x + 22, by - 6, desc, fontsize=8, color=text_sub, wrap=True)
+    # --- BOTTOM CLEAN COMMAND BAR ---
+    bot_box = patches.FancyBboxPatch((110, 55), 1380, 125, boxstyle="round,pad=8,rounding_size=12",
+                                     facecolor='#0b1329', edgecolor=card_border, linewidth=1.5)
+    ax.add_patch(bot_box)
 
-    # Card 4: Modern Modular Textual TUI & Netfilter
-    c4_x = start_x + 3 * spacing
-    c4 = patches.FancyBboxPatch((c4_x, y_pos), card_w, card_h, boxstyle="round,pad=8,rounding_size=12",
-                                facecolor=card_bg, edgecolor=cyan, linewidth=1.8)
-    ax.add_patch(c4)
+    ax.text(140, 145, "RUN IN 10 SECONDS ON ANY LINUX MACHINE:", fontsize=12, fontweight='bold', color=amber)
 
-    h4 = patches.FancyBboxPatch((c4_x + 10, y_pos + card_h - 48), card_w - 20, 38,
-                                boxstyle="round,pad=4,rounding_size=8",
-                                facecolor='#0b2633', edgecolor=cyan, linewidth=1.2)
-    ax.add_patch(h4)
-    ax.text(c4_x + card_w/2, y_pos + card_h - 29, "TEXTUAL TUI & NETFILTER", fontsize=11, fontweight='bold',
-            color='#80d8ff', ha='center', va='center')
-
-    c4_bullets = [
-        ("Zero-Rolling Viewport", "Textual alternate screen DataTable eliminates terminal rolling jitter.", cyan),
-        ("Kernel Netfilter Dropping", "One-touch [B] key injects kernel iptables INPUT/OUTPUT drop rules.", coral),
-        ("Deep Process Inspector", "Traverses /proc to display PID, exe, full cmdline & user UID.", amber),
-        ("Live Multi-Field Search", "Press [/] to filter live flows by process, port, host or IP instantly.", emerald),
-        ("Crafted in California", "100% open source Apache 2.0. Clean, decoupled, modular architecture.", text_sub),
-    ]
-
-    for idx, (title, desc, clr) in enumerate(c4_bullets):
-        by = y_pos + card_h - 90 - (idx * 84)
-        b_box = patches.FancyBboxPatch((c4_x + 12, by - 24), card_w - 24, 62,
-                                       boxstyle="round,pad=3,rounding_size=6",
-                                       facecolor=card_inner, edgecolor=card_border, linewidth=1)
-        ax.add_patch(b_box)
-        ax.text(c4_x + 22, by + 18, f">> {title}", fontsize=9.5, fontweight='bold', color=clr)
-        ax.text(c4_x + 22, by - 6, desc, fontsize=8, color=text_sub, wrap=True)
-
-    # --- BOTTOM QUICK-LAUNCH & BADGE FOOTER ---
-    footer_box = patches.FancyBboxPatch((75, 45), 1450, 125, boxstyle="round,pad=8,rounding_size=10",
-                                        facecolor='#0a1122', edgecolor=card_border, linewidth=1.5)
-    ax.add_patch(footer_box)
-
-    ax.text(105, 138, "QUICK START (CLONE & RUN IN 10 SECONDS):", fontsize=11, fontweight='bold', color=amber)
-
-    cmd_box = patches.FancyBboxPatch((100, 72), 920, 48, boxstyle="round,pad=4,rounding_size=6",
-                                     facecolor='#040711', edgecolor=cyan, linewidth=1.2)
+    cmd_box = patches.FancyBboxPatch((135, 78), 900, 48, boxstyle="round,pad=4,rounding_size=6",
+                                     facecolor='#030712', edgecolor=cyan, linewidth=1.2)
     ax.add_patch(cmd_box)
-    ax.text(120, 96, "git clone https://github.com/dparksports/gort-firewall.git && cd gort-firewall && sudo ./run.sh",
+    ax.text(155, 102, "git clone https://github.com/dparksports/gort-firewall.git && cd gort-firewall && sudo ./run.sh",
             fontsize=10.5, fontfamily='monospace', fontweight='bold', color='#a7ffeb')
 
-    # Badges on bottom right
+    # Badges
     badges = [
         ("100% Open Source", emerald),
-        ("Apache 2.0", cyan),
-        ("Python 3.10+", neon_blue),
         ("Made with ❤️ in California", coral)
     ]
     for i, (b_text, b_color) in enumerate(badges):
-        bx = 1060 + (i % 2) * 230
-        by = 120 if i < 2 else 76
-        b_rect = patches.FancyBboxPatch((bx, by), 215, 34, boxstyle="round,pad=3,rounding_size=6",
-                                        facecolor='#141f38', edgecolor=b_color, linewidth=1.2)
+        bx = 1065
+        by = 108 if i == 0 else 74
+        b_rect = patches.FancyBboxPatch((bx, by), 390, 30, boxstyle="round,pad=3,rounding_size=6",
+                                        facecolor='#16223d', edgecolor=b_color, linewidth=1.2)
         ax.add_patch(b_rect)
-        ax.text(bx + 107, by + 17, b_text, fontsize=9.5, fontweight='bold', color=text_white, ha='center', va='center')
+        ax.text(bx + 195, by + 15, b_text, fontsize=10, fontweight='bold', color=text_white, ha='center', va='center')
 
     plt.tight_layout()
     plt.savefig('linkedin_infographic.png', dpi=150, facecolor=fig.get_facecolor(), edgecolor='none')
     plt.close()
-    print("Generated linkedin_infographic.png successfully!")
+    print("Generated simplified linkedin_infographic.png successfully!")
 
 if __name__ == '__main__':
-    draw_linkedin_infographic()
+    draw_simplified_infographic()
