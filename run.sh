@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MyFirewall - Enterprise Linux Terminal Firewall & Connection Inspector
+# GORT FIREWALL - Autonomous Linux Endpoint Defense & Connection Inspector
 # Universal Launcher Script
 # ==============================================================================
 
@@ -20,14 +20,12 @@ NC='\033[0m' # No Color
 
 print_banner() {
     echo -e "${CYAN}${BOLD}"
-    echo "  __  __       ______ _                      _ _ "
-    echo " |  \/  |     |  ____(_)                    | | |"
-    echo " | \  / |_   _| |__   _ _ __ _____      __ _| | |"
-    echo " | |\/| | | | |  __| | | '__/ _ \ \ /\ / / _\` | |"
-    echo " | |  | | |_| | |    | | | |  __/\ V  V / (_| | |"
-    echo " |_|  |_|\__, |_|    |_|_|  \___| \_/\_/ \__,_|_|"
-    echo "          __/ |                                  "
-    echo "         |___/        Enterprise Linux Defense   "
+    echo "   ____  ___  ____ _____   _____ ___ ____  ______        ___    _     _     "
+    echo "  / ___|/ _ \|  _ |_   _| |  ___|_ _|  _ \| ____\ \    / / \  | |   | |    "
+    echo " | |  _| | | | |_) || |   | |_   | || |_) |  _|  \ \  / / _ \ | |   | |    "
+    echo " | |_| | |_| |  _ < | |   |  _|  | ||  _ <| |___  \ \/ / ___ \| |___| |___ "
+    echo "  \____|\___/|_| \_\|_|   |_|   |___|_| \_\_____|  \_/_/   \_\_____|_____| "
+    echo "               \"Klaatu barada nikto\" • Autonomous Linux Defense"
     echo -e "${NC}"
 }
 

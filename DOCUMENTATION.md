@@ -1,12 +1,13 @@
-# 🛡️ MyFirewall Linux — Technical Architecture & Operational Guide
+# 🤖 GORT Linux Firewall — Technical Architecture & Operational Manual
 
-> **Enterprise Linux Endpoint Network Monitoring, Real-Time Connection Inspection, and Kernel Netfilter Packet Enforcement Engine.**
+> **Autonomous Linux Endpoint Network Monitoring, Real-Time Process Inspection, and Kernel Netfilter Packet Enforcement Engine.**  
+> *"Klaatu barada nikto"*
 
 ---
 
 ## 1. Executive Summary
 
-**MyFirewall** is a security monitoring and packet filtering platform for Linux workstations, servers, and cloud endpoints. Designed for security analysts, journalists, researchers, developers, and administrators, MyFirewall bridges low-level Linux Kernel Netfilter packet filtering with a modern, non-rolling **Textual Terminal User Interface (TUI)**.
+**Gort Firewall** (`gort-firewall`) is an advanced security monitoring and packet filtering platform for Linux workstations, servers, and cloud endpoints. Inspired by *Gort*—the autonomous robot sentinel from *The Day the Earth Stood Still*—Gort stands silent guard over your system's network perimeters, bridging low-level Linux Kernel Netfilter packet filtering with a modern, non-rolling **Textual Terminal User Interface (TUI)** and an AI-ready architecture for **Google Gemini Agent** integration.
 
 ### Core Value Propositions:
 * **Zero Viewport Rolling:** Eliminates terminal line-scrolling through an alternate-screen virtual scrolling engine.
@@ -14,12 +15,13 @@
 * **10-Second Transient Connection Memory:** Catches ephemeral network connections and tracking beacons that open and close in milliseconds.
 * **Kernel Netfilter Packet Drops:** Employs Linux `iptables` / Netfilter to drop malicious or unauthorized IP addresses with zero overhead.
 * **Safe / Mock Mode:** Allows non-root users to perform live network audits without modifying kernel routing tables.
+* **AI-Ready Copilot Engine:** Designed for seamless integration with Gemini Agent for natural language threat investigation.
 
 ---
 
 ## 2. System Architecture & Infographic
 
-![MyFirewall Enterprise Architecture](./corporate_infographics.png)
+![Gort Firewall Enterprise Architecture](./corporate_infographics.png)
 
 ```mermaid
 flowchart TD
@@ -30,12 +32,13 @@ flowchart TD
         Netfilter["Netfilter / iptables (INPUT / OUTPUT Drop)"]
     end
 
-    subgraph CoreEngine["2. Core Processing & Intelligence Engine"]
+    subgraph CoreEngine["2. Core Intelligence & Processing Engine"]
         ProcResolver["Process Resolver (/proc/PID/fd & status)"]
         GeoWorker["Asynchronous GeoIP Worker Pool"]
         RdnsWorker["Asynchronous Reverse DNS Worker Pool"]
         TransientCache["10s Transient Connection Cache"]
         RulesManager["Rule Engine & Configuration (~/.config/myfirewall/)"]
+        GeminiAgent["Gemini Security Copilot (Roadmap)"]
         HistoryLogger["Audit Logger (connection_history.log)"]
     end
 
@@ -56,6 +59,7 @@ flowchart TD
     TransientCache --> DataTable
     TransientCache --> Inspector
     RulesManager <--> Netfilter
+    TransientCache --> GeminiAgent
     TransientCache --> HistoryLogger
 ```
 
@@ -149,7 +153,7 @@ Every terminated or closed network flow is recorded in `connection_history.log`:
 
 ## 6. Execution Modes & Launcher
 
-Launch using the unified launcher script [run.sh](file:///home/aug20/myfirewall-linux/run.sh):
+Launch using the unified launcher script [run.sh](file:///home/aug20/myfirewall-linux/run.sh) (or `./gort.sh`):
 
 ```bash
 # 1. Active Security Mode (Netfilter kernel packet enforcement)
@@ -169,7 +173,7 @@ sudo ./run.sh
 
 ## 7. Quality Assurance & Automated Testing
 
-MyFirewall includes an automated test suite covering network socket parsing, firewall rule lifecycle, event queues, and history serialization:
+Gort includes an automated test suite covering network socket parsing, firewall rule lifecycle, event queues, and history serialization:
 
 ```bash
 python3 test_network_monitor.py

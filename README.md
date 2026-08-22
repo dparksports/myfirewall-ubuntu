@@ -1,26 +1,29 @@
 <p align="center">
-  <img src="./corporate_infographics.png" alt="MyFirewall Enterprise Architecture" width="850">
+  <img src="./corporate_infographics.png" alt="Gort Firewall Enterprise Architecture" width="850">
 </p>
 
-# 🛡️ MyFirewall: Enterprise Linux Endpoint Defense & Network Inspector
+# 🤖 GORT: Autonomous Linux Endpoint Firewall & Connection Inspector
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Platform: Linux](https://img.shields.io/badge/Platform-Linux%20(ProcFS%20%2B%20Netfilter)-orange.svg)]()
 [![Python: 3.10+](https://img.shields.io/badge/Python-3.10%2B-green.svg)]()
 [![UI: Textual TUI](https://img.shields.io/badge/UI-Textual%20(Non--Rolling)-cyan.svg)]()
+[![AI Ready: Gemini Agent](https://img.shields.io/badge/AI-Gemini%20Agent%20Ready-purple.svg)]()
 
-**MyFirewall** is an interactive, non-rolling terminal network inspector and kernel firewall for Linux workstations, servers, and cloud endpoints. Designed for **security analysts, journalists, researchers, developers, and administrators**, MyFirewall provides real-time visibility into every outbound and inbound connection, identifies the responsible processes and command arguments, and allows one-touch packet blocking directly via Linux Netfilter.
+> *"Klaatu barada nikto"* — Named after the silent, indestructible robotic guardian from *The Day the Earth Stood Still*, **Gort** is an autonomous, non-rolling terminal network inspector and kernel-level Netfilter firewall for Linux workstations, servers, and cloud endpoints.
+
+Gort provides real-time visibility into every outbound and inbound connection, identifies the responsible processes and full command arguments, and allows one-touch packet blocking directly via the Linux kernel. **Upcoming Gemini Agent integration** brings autonomous threat analysis, natural-language traffic queries, and automated incident triage directly to your terminal.
 
 ---
 
 ## ⚡ Quick Start (One-Command Launch)
 
-Use the universal launcher script [run.sh](file:///home/aug20/myfirewall-linux/run.sh) to automatically set up dependencies and launch the dashboard:
+Use the universal launcher script [run.sh](file:///home/aug20/myfirewall-linux/run.sh) (or `./gort.sh`) to automatically set up dependencies and launch the dashboard:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/dparksports/myfirewall-linux.git
-cd myfirewall-linux
+git clone https://github.com/dparksports/gort-firewall.git
+cd gort-firewall
 
 # 2. Launch in Security Mode (Active Kernel Netfilter Blocking - Recommended)
 sudo ./run.sh
@@ -41,7 +44,7 @@ sudo ./run.sh
 | **🧱 One-Touch Netfilter Drop** | Press **`B`** to immediately drop an IP with kernel-level `iptables` rules in both `INPUT` and `OUTPUT` chains. |
 | **🙈 Process & IP Ignore Rules** | Press **`I`** to hide noisy trusted applications (e.g., Chrome, Discord) or entire subnet CIDRs. |
 | **🔍 Instant Live Filter** | Press **`/`** to filter the live stream by process name, remote IP, port, protocol, or hostname in real time. |
-| **📊 Real-time Telemetry** | Displays live bandwidth rates (Rx/Tx MB/s), active/inactive connection counts, and packet flow metrics. |
+| **🤖 Gemini AI Integration (Roadmap)** | Natural language network queries, automated domain reputation lookups, and autonomous threat mitigation. |
 
 ---
 
@@ -81,7 +84,7 @@ Options:
 
 ## 📐 Enterprise Architecture
 
-MyFirewall operates across three distinct architectural layers:
+Gort operates across three distinct architectural layers:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
@@ -97,7 +100,7 @@ MyFirewall operates across three distinct architectural layers:
 │    • Process Correlator: Socket Inodes ➔ /proc/<PID>/fd ➔ Exe, Cmdline, User│
 │    • Asynchronous Worker Pools: Non-blocking GeoIP & Reverse DNS Queues    │
 │    • 10-Second Transient Connection Memory & Decay Cache                   │
-│    • Rule Policy Manager & Audit Logger (connection_history.log)           │
+│    • Gemini Security Agent Copilot & Rule Policy Engine                   │
 └─────────────────────────────────────┬──────────────────────────────────────┘
                                       │
 ┌─────────────────────────────────────▼──────────────────────────────────────┐
@@ -140,9 +143,9 @@ Execute the test suite to verify socket parsers, firewall rule managers, and tel
 ## 📂 Repository Structure
 
 ```text
-myfirewall-linux/
+gort-firewall/
 ├── run.sh                     # Universal launcher & environment manager
-├── myfirewall.sh              # Direct execution alias
+├── gort.sh                    # Gort execution entrypoint alias
 ├── myfirewall2.py             # Main Textual TUI frontend dashboard
 ├── myfirewall_core.py         # Core caching, worker threads, and state engine
 ├── network_monitor.py         # ProcFS socket parsing core (TCP, UDP, RAW)

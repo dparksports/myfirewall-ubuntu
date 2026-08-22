@@ -269,7 +269,7 @@ class HelpModal(ModalScreen):
             "• [bold red]Q / Ctrl+C[/] : Quit MyFirewall cleanly\n"
         )
         with Vertical(id="help-dialog"):
-            yield Label("ℹ️ MyFirewall Keyboard Shortcuts", id="help-title")
+            yield Label("🤖 Gort Firewall Keyboard Shortcuts", id="help-title")
             yield Static(help_text, id="help-content")
             with Horizontal(id="help-buttons"):
                 yield Button("Close (Esc)", variant="primary", id="btn-close")
@@ -284,11 +284,13 @@ class HelpModal(ModalScreen):
 
 # --- Main Application ---
 
-class MyFirewallApp(App):
-    """Main Textual Application for MyFirewall."""
+class GortFirewallApp(App):
+    """Main Textual Application for Gort Firewall."""
 
-    TITLE = "MyFirewall - Live Network Dashboard"
-    SUB_TITLE = "Real-Time Connection Inspection & Packet Firewall"
+    TITLE = "GORT - Autonomous Linux Firewall & Network Inspector"
+    SUB_TITLE = "Real-Time Connection Inspection & Kernel Packet Dropper (\"Klaatu barada nikto\")"
+
+MyFirewallApp = GortFirewallApp
 
     CSS = """
     Screen {
