@@ -89,7 +89,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         -l|--login)
             echo -e "${CYAN}[INFO] Launching 1-Click Google Account Sign-In...${NC}"
-            "$PYTHON_BIN" myfirewall2.py --login
+            if [ "$EUID" -eq 0 ] && [ -n "$SUDO_USER" ]; then
+                sudo -u "$SUDO_USER" "$PYTHON_BIN" myfirewall2.py --login
+            else
+                "$PYTHON_BIN" myfirewall2.py --login
+            fi
             exit $?
             ;;
         -i|--install)

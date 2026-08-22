@@ -9,20 +9,35 @@ import os
 import sys
 import json
 import socket
+import subprocess
 import threading
 import webbrowser
 import http.server
 from typing import Optional, Tuple, Dict, Any
 
-CONFIG_DIR = os.path.expanduser("~/.config/myfirewall")
+
+def get_user_home() -> str:
+    """Returns the actual user's home directory even when executed under sudo."""
+    sudo_user = os.environ.get("SUDO_USER")
+    if sudo_user:
+        try:
+            import pwd
+            return pwd.getpwnam(sudo_user).pw_dir
+        except Exception:
+            return os.path.expanduser(f"~{sudo_user}")
+    return os.path.expanduser("~")
+
+
+HOME_DIR = get_user_home()
+CONFIG_DIR = os.path.join(HOME_DIR, ".config/myfirewall")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
-GEMINI_AUTH_DIR = os.path.expanduser("~/.gemini")
+GEMINI_AUTH_DIR = os.path.join(HOME_DIR, ".gemini")
 GEMINI_AUTH_FILE = os.path.join(GEMINI_AUTH_DIR, "auth.json")
-GCLOUD_ADC_FILE = os.path.expanduser("~/.config/gcloud/application_default_credentials.json")
+GCLOUD_ADC_FILE = os.path.join(HOME_DIR, ".config/gcloud/application_default_credentials.json")
 
 
 def ensure_config_dir():
-    """Ensures ~/.config/myfirewall and ~/.gemini directories exist."""
+    """Ensures configuration and auth directories exist with proper permissions."""
     os.makedirs(CONFIG_DIR, exist_ok=True)
     os.makedirs(GEMINI_AUTH_DIR, exist_ok=True)
 
@@ -52,7 +67,7 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
             <html>
             <head><title>Gort Firewall - Authentication Successful</title></head>
             <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b0f19; color: #fff; text-align: center; padding: 60px;">
-                <div style="max-width: 500px; margin: 0 auto; background: #131b2e; border: 1px solid #00f0ff; border-radius: 12px; padding: 40px; box-shadow: 0 8px 32px rgba(0,240,255,0.15);">
+                <div style="max-width: 520px; margin: 0 auto; background: #131b2e; border: 1px solid #00f0ff; border-radius: 12px; padding: 40px; box-shadow: 0 8px 32px rgba(0,240,255,0.15);">
                     <h1 style="color: #00f0ff; margin-bottom: 10px;">✅ Authentication Successful!</h1>
                     <p style="color: #90a4ae; font-size: 16px; line-height: 1.5;">Your Google account has been connected to <b>Gort Firewall</b>.</p>
                     <p style="color: #00e676; font-size: 14px; margin-top: 20px;">You can now close this tab and return to your terminal.</p>
@@ -153,7 +168,23 @@ class GoogleAuthManager:
             json.dump(data, f, indent=2)
         os.chmod(CONFIG_FILE, 0o600)
 
-    def login_with_browser(self, port: int = 8085, timeout: int = 45) -> Tuple[bool, str]:
+    def open_browser_safe(self, url: str) -> bool:
+        """Safely opens the browser, handling root/sudo execution gracefully."""
+        sudo_user = os.environ.get("SUDO_USER")
+        if sudo_user and hasattr(os, "geteuid") and os.geteuid() == 0:
+            try:
+                # Launch browser as the non-root desktop user
+                subprocess.Popen(["sudo", "-u", sudo_user, "xdg-open", url],
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return True
+            except Exception:
+                pass
+        try:
+            return webbrowser.open(url)
+        except Exception:
+            return False
+
+    def login_with_browser(self, port: int = 8085, timeout: int = 120) -> Tuple[bool, str]:
         """
         Launches local loopback listener and opens system default browser
         for 1-click Google OAuth authentication.
@@ -185,15 +216,20 @@ class GoogleAuthManager:
             f"prompt=consent"
         )
 
+        print("\n" + "="*70)
+        print("🌐 GOOGLE ACCOUNT AUTHENTICATION")
+        print("="*70)
+        print("👉 Opening your web browser to sign in...")
+        print(f"\nIf your browser does not open automatically, visit this URL:\n\n  {auth_url}\n")
+        print(f"⏳ Waiting for authorization callback on localhost:{port} (timeout: {timeout}s)...")
+        print("="*70 + "\n")
+
         # Start background server thread
         server_thread = threading.Thread(target=httpd.handle_request, daemon=True)
         server_thread.start()
 
-        # Open user browser
-        try:
-            opened = webbrowser.open(auth_url)
-        except Exception:
-            opened = False
+        # Open user browser safely
+        self.open_browser_safe(auth_url)
 
         # Wait for callback
         server_thread.join(timeout=timeout)
