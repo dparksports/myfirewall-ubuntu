@@ -4,9 +4,14 @@ Provides real-time plain English connection explanations, Zero-Trust threat tria
 and interactive security copilot Q&A with offline heuristic fallback.
 """
 
+import os
+import json
 import asyncio
-from typing import Dict, Any, List
+import requests
+from typing import Dict, Any, List, Optional
 import zero_trust_engine as zte
+
+CONFIG_FILE = os.path.expanduser("~/.config/myfirewall/config.json")
 
 # Try importing Antigravity SDK
 HAS_ANTIGRAVITY_SDK = False
@@ -17,6 +22,58 @@ except ImportError:
     HAS_ANTIGRAVITY_SDK = False
 
 
+def get_gemini_api_key() -> Optional[str]:
+    """Retrieves the Gemini API Key from environment or local configuration file."""
+    # 1. Check environment variables
+    env_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if env_key:
+        return env_key.strip()
+
+    # 2. Check ~/.config/myfirewall/config.json
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                data = json.load(f)
+                key = data.get("gemini_api_key") or data.get("google_api_key")
+                if key:
+                    return key.strip()
+        except Exception:
+            pass
+
+    return None
+
+
+def call_gemini_rest_api(api_key: str, prompt: str, system_instruction: str = "") -> Optional[str]:
+    """Directly queries the Google Gemini REST API using the user's API Key."""
+    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    payload: Dict[str, Any] = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ]
+    }
+    if system_instruction:
+        payload["systemInstruction"] = {
+            "parts": [{"text": system_instruction}]
+        }
+
+    try:
+        resp = requests.post(endpoint, json=payload, timeout=5.0)
+        if resp.status_code == 200:
+            res_json = resp.json()
+            candidates = res_json.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if parts:
+                    return parts[0].get("text", "").strip()
+    except Exception:
+        pass
+    return None
+
+
 class GortAIAdvisor:
     """Intelligent Security Advisor embedded in Gort Firewall."""
 
@@ -24,7 +81,7 @@ class GortAIAdvisor:
         self.sdk_available = HAS_ANTIGRAVITY_SDK
 
     def is_ai_ready(self) -> bool:
-        return self.sdk_available
+        return self.sdk_available or bool(get_gemini_api_key())
 
     async def explain_connection(self, conn: Dict[str, Any]) -> str:
         """Generates a plain-English explanation for a network connection."""
@@ -40,31 +97,41 @@ class GortAIAdvisor:
         anomalies = zt_eval["anomalies"]
         zone_desc = zt_eval["zone_desc"]
 
+        system_prompt = (
+            "You are Gort, an autonomous Linux security advisor. "
+            "Explain network connections to non-technical users in 2 concise sentences: "
+            "1) What the application is doing and who it is communicating with. "
+            "2) A clear safety assessment and recommendation (Safe, Monitor, or Block)."
+        )
+        user_prompt = (
+            f"Evaluate this flow: App '{name}' ({exe}) connecting {direction} to "
+            f"{remote_ip}:{remote_port} ({hostname}, {geo}). "
+            f"Zero-Trust Zone: {zone_desc}, Trust Score: {score}/100, "
+            f"Heuristic Flags: {', '.join(anomalies) if anomalies else 'None'}."
+        )
+
+        # 1. Try Antigravity SDK
         if self.sdk_available:
             try:
                 config = LocalAgentConfig(
-                    system_instructions=(
-                        "You are Gort, an autonomous Linux security advisor. "
-                        "Explain network connections to non-technical users in 2 concise sentences: "
-                        "1) What the application is doing and who it is communicating with. "
-                        "2) A clear safety assessment and recommendation (Safe, Monitor, or Block)."
-                    ),
+                    system_instructions=system_prompt,
                     capabilities=CapabilitiesConfig()
                 )
                 async with Agent(config) as agent:
-                    prompt = (
-                        f"Evaluate this flow: App '{name}' ({exe}) connecting {direction} to "
-                        f"{remote_ip}:{remote_port} ({hostname}, {geo}). "
-                        f"Zero-Trust Zone: {zone_desc}, Trust Score: {score}/100, "
-                        f"Heuristic Flags: {', '.join(anomalies) if anomalies else 'None'}."
-                    )
-                    resp = await agent.chat(prompt)
+                    resp = await agent.chat(user_prompt)
                     return resp.text.strip()
-            except Exception as e:
-                # Fallback to local heuristic engine on network/token error
+            except Exception:
                 pass
 
-        # Offline / Heuristic Explanation Engine
+        # 2. Try Gemini API Key (Direct)
+        api_key = get_gemini_api_key()
+        if api_key:
+            loop = asyncio.get_event_loop()
+            res = await loop.run_in_executor(None, call_gemini_rest_api, api_key, user_prompt, system_prompt)
+            if res:
+                return res
+
+        # 3. Offline / Heuristic Explanation Engine Fallback
         return self._heuristic_explanation(conn, zt_eval)
 
     def _heuristic_explanation(self, conn: Dict[str, Any], zt: Dict[str, Any]) -> str:
@@ -102,31 +169,42 @@ class GortAIAdvisor:
         if not user_question.strip():
             return "Please type a question for Gort AI Copilot."
 
+        conns_summary = "\n".join([
+            f"- {c.get('name')} (PID {c.get('pid')}): {c.get('remote_ip')}:{c.get('remote_port')} ({c.get('geo', 'Unknown')})"
+            for c in active_conns[:15]
+        ])
+        system_prompt = (
+            "You are Gort AI, an expert Linux cybersecurity copilot. "
+            "Answer user questions clearly and concisely. "
+            "Explain firewall concepts in simple terms and give actionable advice."
+        )
+        user_prompt = (
+            f"Active connections on user machine:\n{conns_summary}\n\n"
+            f"User question: {user_question}"
+        )
+
+        # 1. Try Antigravity SDK
         if self.sdk_available:
             try:
-                conns_summary = "\n".join([
-                    f"- {c.get('name')} (PID {c.get('pid')}): {c.get('remote_ip')}:{c.get('remote_port')} ({c.get('geo', 'Unknown')})"
-                    for c in active_conns[:15]
-                ])
                 config = LocalAgentConfig(
-                    system_instructions=(
-                        "You are Gort AI, an expert Linux cybersecurity copilot. "
-                        "Answer user questions clearly and concisely. "
-                        "Explain firewall concepts in simple terms and give actionable advice."
-                    ),
+                    system_instructions=system_prompt,
                     capabilities=CapabilitiesConfig()
                 )
                 async with Agent(config) as agent:
-                    prompt = (
-                        f"Active connections on user machine:\n{conns_summary}\n\n"
-                        f"User question: {user_question}"
-                    )
-                    resp = await agent.chat(prompt)
+                    resp = await agent.chat(user_prompt)
                     return resp.text.strip()
-            except Exception as e:
+            except Exception:
                 pass
 
-        # Offline Copilot Fallback
+        # 2. Try Gemini API Key (Direct)
+        api_key = get_gemini_api_key()
+        if api_key:
+            loop = asyncio.get_event_loop()
+            res = await loop.run_in_executor(None, call_gemini_rest_api, api_key, user_prompt, system_prompt)
+            if res:
+                return res
+
+        # 3. Offline Copilot Fallback
         q_lower = user_question.lower()
         if "block" in q_lower or "drop" in q_lower:
             return "To block an IP, highlight the connection row and press 'B'. Gort will inject an iptables drop rule in the Linux kernel."
@@ -134,6 +212,8 @@ class GortAIAdvisor:
             return "To hide trusted applications like Chrome or Spotify, highlight the row and press 'I'. You can also ignore entire subnet CIDRs."
         elif "safe" in q_lower or "score" in q_lower:
             return "Gort evaluates every connection with a Zero-Trust score (0-100). Green (80+) is trusted, Yellow (50-79) requires verification, and Red (<50) indicates high risk."
+        elif "gemini" in q_lower or "google" in q_lower or "key" in q_lower:
+            return "To use your Google Gemini account, set 'export GEMINI_API_KEY=your_key' or save it in '~/.config/myfirewall/config.json'."
         else:
             return (
                 f"Gort AI Copilot is currently monitoring {len(active_conns)} active flows. "
