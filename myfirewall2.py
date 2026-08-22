@@ -31,7 +31,8 @@ import zero_trust_engine as zte
 import ai_advisor as aia
 import autonomous_sentinel as autosent
 from ui_helpers import fmt_duration, fmt_pkts, fmt_bytes_rate
-from ui_modals import BlockModal, IgnoreModal, ExplainModal, CopilotModal, HelpModal, RollbackModal
+from ui_modals import BlockModal, IgnoreModal, ExplainModal, CopilotModal, HelpModal, RollbackModal, LoginModal
+from auth_manager import auth_manager
 
 
 class GortFirewallApp(App):
@@ -123,6 +124,7 @@ class GortFirewallApp(App):
         Binding("e", "explain_ai", "Explain (AI)", show=True),
         Binding("a", "ask_copilot", "Ask Copilot", show=True),
         Binding("space", "ask_copilot", "Ask Copilot", show=False),
+        Binding("l", "login_google", "Google Login", show=True),
         Binding("u", "rollback", "Unfreeze / Rollback", show=True),
         Binding("b", "block", "Block IP", show=True),
         Binding("i", "ignore", "Ignore Process", show=True),
@@ -497,6 +499,10 @@ class GortFirewallApp(App):
         conns = self.get_filtered_connections()
         self.push_screen(CopilotModal(conns))
 
+    def action_login_google(self) -> None:
+        """Opens modal for Google Account login and API key management."""
+        self.push_screen(LoginModal())
+
     def action_rollback(self) -> None:
         """Opens modal for reviewing and rolling back autonomous incidents."""
         incidents = list(autosent.sentinel.active_incidents)
@@ -536,6 +542,15 @@ MyFirewallApp = GortFirewallApp
 # --- Application Entry Point ---
 
 def main():
+    if "--login" in sys.argv:
+        print("🌐 Launching Google Account Browser OAuth sign-in...")
+        success, msg = auth_manager.login_with_browser()
+        if success:
+            print(f"✅ {msg}")
+        else:
+            print(f"⚠️ {msg}")
+        sys.exit(0 if success else 1)
+
     core.load_config()
     core.start_core_threads()
     time.sleep(0.3)

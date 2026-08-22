@@ -15,6 +15,7 @@ from textual.binding import Binding
 import myfirewall_core as core
 import zero_trust_engine as zte
 import ai_advisor as aia
+from auth_manager import auth_manager
 
 
 class BlockModal(ModalScreen):
@@ -446,6 +447,7 @@ class HelpModal(ModalScreen):
             "• [bold white]↑ / ↓ / PgUp / PgDn / Mouse[/] : Scroll & navigate connections\n"
             "• [bold green]E[/] : [bold green]Explain with AI[/] (Antigravity & Zero-Trust Plain English Breakdown)\n"
             "• [bold cyan]A / Space[/] : [bold cyan]Ask Gort Copilot[/] (Interactive AI security assistant)\n"
+            "• [bold cyan]L[/] : [bold cyan]Google Login[/] (1-Click Browser OAuth Sign-In & API Key Config)\n"
             "• [bold yellow]U[/] : [bold yellow]Unfreeze / Rollback[/] Autonomous Defense Incidents (1-Click Restore)\n"
             "• [bold yellow]B[/] : Block / Unblock highlighted remote IP (Netfilter iptables)\n"
             "• [bold yellow]I[/] : Ignore / Hide highlighted process or IP\n"
@@ -468,3 +470,110 @@ class HelpModal(ModalScreen):
     def on_key(self, event) -> None:
         if event.key in ("escape", "enter", "q"):
             self.dismiss()
+
+
+class LoginModal(ModalScreen):
+    """Modal for 1-click Google Account login or manual API key configuration."""
+
+    CSS = """
+    LoginModal {
+        align: center middle;
+    }
+    #login-dialog {
+        width: 76;
+        height: auto;
+        border: thick $primary;
+        background: $surface;
+        padding: 1 2;
+    }
+    #login-title {
+        text-style: bold;
+        color: $primary;
+        margin-bottom: 1;
+        text-align: center;
+    }
+    #login-status {
+        margin-bottom: 1;
+        padding: 1;
+        background: $boost;
+        border: solid $accent;
+    }
+    #login-input-box {
+        margin-top: 1;
+        margin-bottom: 1;
+        height: auto;
+    }
+    #login-buttons {
+        align: center middle;
+        height: auto;
+        margin-top: 1;
+    }
+    #login-buttons Button {
+        margin: 0 1;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        is_auth, auth_desc = auth_manager.is_authenticated()
+        status_style = "bold green" if is_auth else "bold yellow"
+
+        status_text = (
+            f"• [bold white]Active Status:[/] [{status_style}]{auth_desc}[/]\n"
+            f"• [bold cyan]Google Antigravity SDK:[/] {'✅ Installed' if aia.HAS_ANTIGRAVITY_SDK else '⚠️ Standalone Mode'}\n"
+            "• Connect your Google account to enable instant, natural-language security advice!"
+        )
+
+        with Vertical(id="login-dialog"):
+            yield Label("🌐 Google Account & Gemini AI Configuration", id="login-title")
+            yield Static(status_text, id="login-status")
+            yield Static("[bold white]Option A: 1-Click Browser OAuth Sign-In (Recommended)[/]")
+            yield Static("Clicking below opens your default web browser to approve Google account access without copying keys.")
+            with Horizontal(id="login-buttons"):
+                yield Button("🌐 Sign In with Google (Browser)", variant="success", id="btn-browser-login")
+            
+            yield Static("\n[bold white]Option B: Manual Gemini API Key Entry[/]", id="login-input-box")
+            yield Input(placeholder="Paste AIzaSy... key or leave blank", id="login-api-key")
+            with Horizontal(id="login-bottom-buttons"):
+                yield Button("Save Key", variant="primary", id="btn-save-key")
+                yield Button("Close (Esc)", variant="default", id="btn-cancel")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        button_id = event.button.id
+        if button_id == "btn-browser-login":
+            status_widget = self.query_one("#login-status", Static)
+            status_widget.update(
+                "[bold cyan]⏳ Opening your web browser for Google Sign-In...[/]\n"
+                "[italic text-muted]Approve in browser, then return here. Listening on localhost:8085...[/]"
+            )
+            # Run browser login in worker thread
+            def do_login():
+                success, msg = auth_manager.login_with_browser()
+                def update_ui():
+                    if success:
+                        status_widget.update(f"✅ [bold green]{msg}[/]\nGoogle account is now active!")
+                    else:
+                        status_widget.update(f"⚠️ [bold red]{msg}[/]")
+                self.app.call_from_thread(update_ui)
+
+            import threading
+            threading.Thread(target=do_login, daemon=True).start()
+
+        elif button_id == "btn-save-key":
+            key_val = self.query_one("#login-api-key", Input).value.strip()
+            if key_val:
+                auth_manager.save_api_key(key_val)
+                status_widget = self.query_one("#login-status", Static)
+                status_widget.update("✅ [bold green]API Key saved successfully to ~/.config/myfirewall/config.json![/]")
+            else:
+                self.notify("Please enter an API key or use 1-Click Browser Login.", severity="warning")
+
+        elif button_id == "btn-cancel":
+            self.dismiss()
+
+    def action_cancel(self) -> None:
+        self.dismiss()
+

@@ -141,6 +141,7 @@ Traverses `/proc/<PID>/fd/` to map kernel socket inodes (`socket:[12345]`) back 
 | `Mouse Scroll` | Smooth scroll through active connections | Main Table |
 | `E` / `e` | **Explain with AI** (Antigravity SDK & Zero-Trust Breakdown) | Global |
 | `A` / `a` / `Space` | **Ask Gort Copilot** (Interactive AI Security Assistant) | Global |
+| `L` / `l` | **Google Login** (1-Click Browser OAuth Sign-In) | Global |
 | `U` / `u` | **Unfreeze / Rollback** (1-Click Restore Paused Processes & Lift Drops) | Global |
 | `B` / `b` | Toggle Block on selected IP (or enter manual IP/CIDR) | Global |
 | `I` / `i` | Toggle Ignore on selected process name or IP | Global |

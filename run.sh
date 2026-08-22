@@ -36,6 +36,7 @@ usage() {
     echo -e "${BOLD}Options:${NC}"
     echo "  -s, --security     Run in active firewall mode with root (sudo required)"
     echo "  -m, --mock         Run in safe/monitor-only mode (no root required)"
+    echo "  -l, --login        Sign in with your Google account via browser (no API key needed)"
     echo "  -i, --install      Install/update all required dependencies"
     echo "  -t, --test         Run automated unit tests"
     echo "  -h, --help         Display this help message and exit"
@@ -43,6 +44,7 @@ usage() {
     echo -e "${BOLD}Examples:${NC}"
     echo "  sudo ./run.sh            # Run in active blocking mode"
     echo "  ./run.sh --mock          # Run in monitor-only safe mode"
+    echo "  ./run.sh --login         # 1-Click Google account browser sign-in"
     echo "  ./run.sh --install       # Setup Python venv and dependencies"
     exit 0
 }
@@ -85,6 +87,11 @@ while [[ $# -gt 0 ]]; do
             MODE="mock"
             shift
             ;;
+        -l|--login)
+            echo -e "${CYAN}[INFO] Launching 1-Click Google Account Sign-In...${NC}"
+            "$PYTHON_BIN" myfirewall2.py --login
+            exit $?
+            ;;
         -i|--install)
             echo -e "${CYAN}[INFO] Installing dependencies from requirements.txt...${NC}"
             "$PYTHON_BIN" -m pip install -r requirements.txt
@@ -99,6 +106,7 @@ while [[ $# -gt 0 ]]; do
             "$PYTHON_BIN" test_event_monitors.py
             "$PYTHON_BIN" test_zero_trust.py
             "$PYTHON_BIN" test_autonomous_sentinel.py
+            "$PYTHON_BIN" test_auth_manager.py
             echo -e "${GREEN}[OK] All tests passed successfully!${NC}"
             exit 0
             ;;

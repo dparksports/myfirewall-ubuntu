@@ -62,6 +62,7 @@ sudo ./run.sh
 | **`PgUp` / `PgDn`** | **Page Scroll** | Fast scroll through dozens of connections without viewport rolling. |
 | **`E`** | **Explain with AI** | Opens modal with plain-English safety analysis via Google Antigravity SDK. |
 | **`A` / `Space`** | **Ask Gort Copilot** | Opens interactive natural language AI security assistant dialog. |
+| **`L`** | **Google Login** | 1-Click browser OAuth sign-in with your Google Gemini account. |
 | **`U`** | **Unfreeze / Rollback** | Opens 1-click incident rollback dialog to restore paused processes & lift drops. |
 | **`B`** | **Block / Unblock IP** | Opens modal pre-populated with highlighted IP to toggle kernel drop. |
 | **`I`** | **Ignore Process / IP** | Opens modal to hide trusted applications from the feed. |
@@ -128,8 +129,9 @@ gort-firewall/
 ├── run.sh                          # Universal launcher & environment manager
 ├── gort.sh                         # Gort execution entrypoint alias
 ├── myfirewall2.py                  # Main Textual TUI frontend controller (~340 lines)
-├── ui_modals.py                    # Interactive modal screens (Block, Ignore, AI, Copilot, Rollback, Help)
+├── ui_modals.py                    # Interactive modal screens (Block, Ignore, AI, Copilot, Rollback, Login, Help)
 ├── ui_helpers.py                   # UI formatting & string presentation utilities
+├── auth_manager.py                 # 1-Click Google OAuth & Antigravity token manager
 ├── autonomous_sentinel.py          # Autonomous Intrusion Detector, Bad USB & Rollback Engine
 ├── zero_trust_engine.py            # Zero-Trust scoring, micro-segmentation & anomaly heuristics
 ├── ai_advisor.py                   # Google Antigravity SDK & Gemini Copilot advisor
@@ -141,6 +143,7 @@ gort-firewall/
 ├── IMPLEMENTATION_PLAN.md          # UI and core decoupling refactoring specification
 ├── DOCUMENTATION.md                # Full technical architecture and operational manual
 ├── README.md                       # Comprehensive project overview
+├── test_auth_manager.py            # Google OAuth & credentials unit tests
 ├── test_autonomous_sentinel.py     # Sentinel & 1-click rollback unit tests
 ├── test_zero_trust.py              # Zero-Trust engine & AI advisor unit tests
 ├── test_network_monitor.py         # Socket parser unit tests
