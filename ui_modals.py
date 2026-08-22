@@ -330,6 +330,87 @@ class CopilotModal(ModalScreen):
         self.query_one("#copilot-response", Static).update(ans)
 
 
+class RollbackModal(ModalScreen):
+    """Modal for reviewing autonomous incidents and triggering 1-click rollback/unfreeze."""
+
+    CSS = """
+    RollbackModal {
+        align: center middle;
+    }
+    #rollback-dialog {
+        width: 80;
+        height: auto;
+        border: thick $warning;
+        background: $surface;
+        padding: 1 2;
+    }
+    #rollback-title {
+        text-style: bold;
+        color: $warning;
+        margin-bottom: 1;
+        text-align: center;
+    }
+    #rollback-body {
+        margin-bottom: 1;
+        height: auto;
+        max-height: 12;
+        overflow-y: auto;
+    }
+    #rollback-buttons {
+        align: center middle;
+        height: auto;
+    }
+    #rollback-buttons Button {
+        margin: 0 1;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "dismiss", "Close"),
+    ]
+
+    def __init__(self, incidents: List[Any], selected_incident: Optional[Any] = None):
+        super().__init__()
+        self.incidents = incidents
+        self.target_incident = selected_incident or (incidents[-1] if incidents else None)
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="rollback-dialog"):
+            yield Label("🛡️ Gort Autonomous Defense & Incident Rollback", id="rollback-title")
+            if not self.target_incident:
+                yield Static("No autonomous incidents recorded yet. System state is clean.", id="rollback-body")
+                with Horizontal(id="rollback-buttons"):
+                    yield Button("Close (Esc)", variant="default", id="btn-close")
+            else:
+                inc = self.target_incident
+                proc = inc.process_info
+                net = inc.network_info
+                status_str = "[strike bold red]ROLLED BACK[/]" if inc.rolled_back else "[bold green]ACTIVE INTERVENTION[/]"
+                body_text = (
+                    f"[bold cyan]Incident ID:[/] {inc.incident_id}  │  [bold cyan]Status:[/] {status_str}\n"
+                    f"[bold cyan]Action Tier:[/] [bold red]{inc.action_tier}[/] (Confidence: {inc.confidence_score}%)\n"
+                    f"[bold cyan]Threat Type:[/] [yellow]{inc.threat_type}[/]\n"
+                    f"[bold cyan]Process:[/] [green]{proc.get('name')}[/] (PID: {proc.get('pid')}, User: {proc.get('user')})\n"
+                    f"[bold cyan]Remote:[/] {net.get('remote_ip')}:{net.get('remote_port')}\n"
+                    f"[bold cyan]Evidence:[/] {', '.join(inc.evidence)}\n"
+                    f"[bold cyan]Actions Taken:[/] {', '.join(inc.actions_taken)}\n\n"
+                    f"[bold white]1-Click Rollback will unfreeze process (SIGCONT), remove temporary Netfilter drop, and whitelist IP.[/]"
+                )
+                yield Static(body_text, id="rollback-body")
+                with Horizontal(id="rollback-buttons"):
+                    if not inc.rolled_back:
+                        yield Button("↩️ Unfreeze & Rollback", variant="warning", id="btn-rollback")
+                    yield Button("Close (Esc)", variant="default", id="btn-close")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-rollback" and self.target_incident:
+            import autonomous_sentinel
+            autonomous_sentinel.sentinel.rollback_incident(self.target_incident.incident_id)
+            self.dismiss(True)
+        else:
+            self.dismiss(None)
+
+
 class HelpModal(ModalScreen):
     """Modal displaying keyboard navigation and shortcuts."""
 
@@ -361,15 +442,16 @@ class HelpModal(ModalScreen):
 
     def compose(self) -> ComposeResult:
         help_text = (
-            "[bold cyan]Navigation & Zero-Trust Shortcuts:[/]\n\n"
+            "[bold cyan]Navigation, AI & Autonomous Defense Shortcuts:[/]\n\n"
             "• [bold white]↑ / ↓ / PgUp / PgDn / Mouse[/] : Scroll & navigate connections\n"
             "• [bold green]E[/] : [bold green]Explain with AI[/] (Antigravity & Zero-Trust Plain English Breakdown)\n"
             "• [bold cyan]A / Space[/] : [bold cyan]Ask Gort Copilot[/] (Interactive AI security assistant)\n"
+            "• [bold yellow]U[/] : [bold yellow]Unfreeze / Rollback[/] Autonomous Defense Incidents (1-Click Restore)\n"
             "• [bold yellow]B[/] : Block / Unblock highlighted remote IP (Netfilter iptables)\n"
             "• [bold yellow]I[/] : Ignore / Hide highlighted process or IP\n"
             "• [bold green]/[/] : Search & filter by process, IP, port, host, or protocol\n"
             "• [bold white]Esc[/] : Clear search filter & refocus table\n"
-            "• [bold white]1 - 6[/] : Switch tabs (All / Outbound / Inbound / Zero-Trust / Blocked / Ignored)\n"
+            "• [bold white]1 - 7[/] : Switch tabs (All / Outbound / Inbound / Zero-Trust / Auto-Defense / Blocked / Ignored)\n"
             "• [bold white]R[/] : Reload saved config\n"
             "• [bold white]H / ?[/] : Open this Help dialog\n"
             "• [bold red]Q / Ctrl+C[/] : Quit Gort Firewall cleanly\n"

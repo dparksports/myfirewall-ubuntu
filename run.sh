@@ -98,6 +98,7 @@ while [[ $# -gt 0 ]]; do
             "$PYTHON_BIN" test_connection_history.py
             "$PYTHON_BIN" test_event_monitors.py
             "$PYTHON_BIN" test_zero_trust.py
+            "$PYTHON_BIN" test_autonomous_sentinel.py
             echo -e "${GREEN}[OK] All tests passed successfully!${NC}"
             exit 0
             ;;

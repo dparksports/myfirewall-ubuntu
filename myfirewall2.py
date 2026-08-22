@@ -29,8 +29,9 @@ import myfirewall_core as core
 from process_resolver import get_detailed_process_info
 import zero_trust_engine as zte
 import ai_advisor as aia
+import autonomous_sentinel as autosent
 from ui_helpers import fmt_duration, fmt_pkts, fmt_bytes_rate
-from ui_modals import BlockModal, IgnoreModal, ExplainModal, CopilotModal, HelpModal
+from ui_modals import BlockModal, IgnoreModal, ExplainModal, CopilotModal, HelpModal, RollbackModal
 
 
 class GortFirewallApp(App):
@@ -122,6 +123,7 @@ class GortFirewallApp(App):
         Binding("e", "explain_ai", "Explain (AI)", show=True),
         Binding("a", "ask_copilot", "Ask Copilot", show=True),
         Binding("space", "ask_copilot", "Ask Copilot", show=False),
+        Binding("u", "rollback", "Unfreeze / Rollback", show=True),
         Binding("b", "block", "Block IP", show=True),
         Binding("i", "ignore", "Ignore Process", show=True),
         Binding("slash", "search", "Search / Filter", show=True),
@@ -130,8 +132,9 @@ class GortFirewallApp(App):
         Binding("2", "tab_out", "Outbound", show=False),
         Binding("3", "tab_in", "Inbound", show=False),
         Binding("4", "tab_zt", "Zero-Trust", show=False),
-        Binding("5", "tab_blocked", "Blocked", show=False),
-        Binding("6", "tab_ignored", "Ignored", show=False),
+        Binding("5", "tab_auto", "Auto-Defense", show=False),
+        Binding("6", "tab_blocked", "Blocked", show=False),
+        Binding("7", "tab_ignored", "Ignored", show=False),
         Binding("r", "reload", "Reload Config", show=True),
         Binding("h", "help", "Help", show=True),
         Binding("question_mark", "help", "Help", show=False),
@@ -149,6 +152,7 @@ class GortFirewallApp(App):
             Tab("Outbound Only", id="tab-out"),
             Tab("Inbound Only", id="tab-in"),
             Tab("Zero-Trust Alerts", id="tab-zt"),
+            Tab("Auto-Defense Incidents", id="tab-auto"),
             Tab("Blocked Rules", id="tab-blocked"),
             Tab("Ignored Rules", id="tab-ignored"),
             id="tabs-bar"
@@ -180,6 +184,7 @@ class GortFirewallApp(App):
         table.add_column("Pkts ↓", key="pkts_rx", width=7)
         table.add_column("Status", key="status", width=10)
 
+        autosent.sentinel.start()
         self.set_interval(0.5, self.refresh_dashboard)
         table.focus()
 
@@ -189,9 +194,14 @@ class GortFirewallApp(App):
         filtered = []
         q = self.filter_query.strip().lower()
 
+        # Gather active incident IPs and frozen PIDs for tab-auto
+        incident_ips = {inc.network_info.get("remote_ip") for inc in autosent.sentinel.active_incidents}
+        frozen_pids = set(autosent.sentinel.frozen_pids.keys())
+
         for c in all_conns:
             ip = c.get("remote_ip", "")
             name = c.get("name", "Unknown")
+            pid = c.get("pid")
 
             is_ignored = (
                 ip in core.ignored_ips
@@ -223,6 +233,10 @@ class GortFirewallApp(App):
                 zt = zte.evaluate_zero_trust(c)
                 if zt["score"] >= 80 and not zt["anomalies"]:
                     continue
+            elif self.active_tab == "tab-auto":
+                # Show connections that triggered an autonomous incident or frozen PID
+                if not (ip in incident_ips or pid in frozen_pids or ip in autosent.sentinel.temporary_drops):
+                    continue
             elif self.active_tab == "tab-blocked":
                 if not is_blocked:
                     continue
@@ -232,11 +246,11 @@ class GortFirewallApp(App):
 
             if q:
                 proto = c.get("protocol", "").lower()
-                pid = str(c.get("pid", "")).lower()
+                pid_str = str(c.get("pid", "")).lower()
                 port = str(c.get("remote_port", "")).lower()
                 geo = core.geo_cache.get(ip, c.get("geo", "")).lower()
                 host = core.rdns_cache.get(ip, "").lower()
-                target_str = f"{proto} {direction.lower()} {name.lower()} {pid} {ip} {port} {geo} {host}"
+                target_str = f"{proto} {direction.lower()} {name.lower()} {pid_str} {ip} {port} {geo} {host}"
                 if q not in target_str:
                     continue
 
@@ -253,6 +267,18 @@ class GortFirewallApp(App):
         blocked_count = len(core.blocked_ips)
         ignored_count = len(core.ignored_ips) + len(core.ignored_names) + len(core.ignored_cidrs)
 
+        # Autonomous Sentinel real-time evaluation
+        for c in core.connections_cache:
+            if c.get("status") == "ACTIVE":
+                autosent.sentinel.evaluate_and_respond(c)
+
+        inc_count = len([i for i in autosent.sentinel.active_incidents if not i.rolled_back])
+        frozen_count = len(autosent.sentinel.frozen_pids)
+        if inc_count > 0:
+            auto_str = f" │ 🛡️ [bold red]Auto-Defense: {inc_count} incidents ({frozen_count} frozen)[/]"
+        else:
+            auto_str = " │ 🛡️ [bold green]Auto-Defense: Clean (0 incidents)[/]"
+
         mock_str = " [bold red](MOCK MODE)[/]" if core.is_mock_mode() else " [bold green](FIREWALL ACTIVE)[/]"
         ai_str = " [bold magenta]🤖 AI: ACTIVE[/]" if aia.HAS_ANTIGRAVITY_SDK else " [dim]🤖 AI: HEURISTIC[/]"
 
@@ -260,7 +286,7 @@ class GortFirewallApp(App):
             f" ⚡ [bold cyan]Bandwidth:[/] Rx: [green]{rx_str}[/] | Tx: [yellow]{tx_str}[/]  "
             f"│  📊 [bold cyan]Connections:[/] [white]{active_count}[/] active, [dim]{inactive_count}[/] inactive  "
             f"│  🛡️ [bold red]{blocked_count}[/] blocked, [bold yellow]{ignored_count}[/] ignored"
-            f"{mock_str}{ai_str}"
+            f"{auto_str}{mock_str}{ai_str}"
         )
         self.query_one("#metrics-bar", Static).update(metrics_text)
 
@@ -282,13 +308,19 @@ class GortFirewallApp(App):
             dir_val = c.get("direction", "OUTBOUND")
             dir_text = Text("IN", style="bold green") if dir_val == "INBOUND" else Text("OUT", style="bold blue")
 
-            pid_str = str(c["pid"]) if c.get("pid") else "?"
+            pid = c.get("pid")
+            pid_str = str(pid) if pid else "?"
             is_blocked = remote_ip in core.blocked_ips
+            is_frozen = pid in autosent.sentinel.frozen_pids
 
             zt = zte.evaluate_zero_trust(c)
             zt_badge_text = Text.from_markup(zt["badge"])
 
-            if is_blocked:
+            if is_frozen:
+                proc_text = Text(f"{c['name']} [FROZEN]", style="bold orange1")
+                remote_disp = Text(f"{remote_ip}:{remote_port}", style="bold orange1")
+                status_text = Text("SIGSTOP", style="bold orange1")
+            elif is_blocked:
                 proc_text = Text(f"{c['name']} [BLKD]", style="bold strike red")
                 remote_disp = Text(f"{remote_ip}:{remote_port}", style="bold red")
                 status_text = Text("BLOCKED", style="bold red")
@@ -359,7 +391,13 @@ class GortFirewallApp(App):
         inode = conn.get("inode", "N/A")
 
         is_blocked = remote_ip in core.blocked_ips
-        block_status = "[bold red]BLOCKED[/]" if is_blocked else "[bold green]ALLOWED[/]"
+        is_frozen = pid in autosent.sentinel.frozen_pids
+        if is_frozen:
+            block_status = "[bold orange1]FROZEN (SIGSTOP)[/]"
+        elif is_blocked:
+            block_status = "[bold red]BLOCKED[/]"
+        else:
+            block_status = "[bold green]ALLOWED[/]"
 
         geo = core.geo_cache.get(remote_ip, conn.get("geo", "Unknown"))
         hostname = core.rdns_cache.get(remote_ip, "N/A")
@@ -440,6 +478,9 @@ class GortFirewallApp(App):
     def action_tab_zt(self) -> None:
         self.query_one("#tabs-bar", Tabs).active = "tab-zt"
 
+    def action_tab_auto(self) -> None:
+        self.query_one("#tabs-bar", Tabs).active = "tab-auto"
+
     def action_tab_blocked(self) -> None:
         self.query_one("#tabs-bar", Tabs).active = "tab-blocked"
 
@@ -455,6 +496,16 @@ class GortFirewallApp(App):
     def action_ask_copilot(self) -> None:
         conns = self.get_filtered_connections()
         self.push_screen(CopilotModal(conns))
+
+    def action_rollback(self) -> None:
+        """Opens modal for reviewing and rolling back autonomous incidents."""
+        incidents = list(autosent.sentinel.active_incidents)
+        selected_inc = None
+        if self.selected_conn:
+            sel_ip = self.selected_conn.get("remote_ip")
+            sel_pid = self.selected_conn.get("pid")
+            selected_inc = next((inc for inc in incidents if inc.network_info.get("remote_ip") == sel_ip or inc.process_info.get("pid") == sel_pid), None)
+        self.push_screen(RollbackModal(incidents, selected_inc))
 
     def action_block(self) -> None:
         default_ip = self.selected_conn.get("remote_ip", "") if self.selected_conn else ""
@@ -475,6 +526,7 @@ class GortFirewallApp(App):
     def action_quit_app(self) -> None:
         core.running = False
         core.stop_events_monitor.set()
+        autosent.sentinel.stop()
         self.exit()
 
 
@@ -494,6 +546,7 @@ def main():
     finally:
         core.running = False
         core.stop_events_monitor.set()
+        autosent.sentinel.stop()
         time.sleep(0.2)
 
 
