@@ -1,13 +1,13 @@
 # 🤖 GORT Linux Firewall & Zero-Trust Sentinel — Technical Architecture & Operational Manual
 
 > **Autonomous Linux Endpoint Network Defense, Zero-Trust Risk Scoring, Bad USB Threat Neutralization, and Google Antigravity AI Security Copilot.**  
-> *"Klaatu barada nikto"*
+> *Made with ❤️ in California*
 
 ---
 
 ## 1. Executive Summary
 
-**Gort Firewall** (`gort-firewall`) is an advanced security monitoring, Zero-Trust policy enforcement, and autonomous packet filtering platform for Linux workstations, servers, and cloud endpoints. Inspired by *Gort*—the autonomous robot sentinel from *The Day the Earth Stood Still*—Gort stands silent guard over your system's network perimeters, bridging low-level Linux Kernel Netfilter packet filtering with a modern, non-rolling **Textual Terminal User Interface (TUI)**, continuous **Autonomous Intrusion Defense (AIDS)**, **Bad USB physical threat neutralization**, and native integration with the **Google Antigravity SDK** (`google.antigravity`) and **Google Gemini**.
+**Gort Firewall** (`gort-firewall`) is an advanced security monitoring, Zero-Trust policy enforcement, and autonomous packet filtering platform for Linux workstations, servers, and cloud endpoints. Gort stands silent guard over your system's network perimeters, bridging low-level Linux Kernel Netfilter packet filtering with a modern, non-rolling **Textual Terminal User Interface (TUI)**, continuous **Autonomous Intrusion Defense (AIDS)**, **Bad USB physical threat neutralization**, and native integration with the **Google Antigravity SDK** (`google.antigravity`) and **Google Gemini**.
 
 ### Core Value Propositions:
 * **Autonomous Intruder & Bad USB Sentinel:** Continuously evaluates live flows, drops reverse shells, neutralizes Bad USB hardware injects, and pauses dropper processes via non-destructive `SIGSTOP` freezing.
@@ -220,8 +220,8 @@ Gort includes an automated test suite covering socket parsing, firewall rule lif
 
 ---
 
-## 📜 License & Acknowledgments
+## 📜 License & Craftsmanship
 
 * **License:** Apache License 2.0.
 * **Repository:** [https://github.com/dparksports/gort-firewall](https://github.com/dparksports/gort-firewall)
-* **Inspired by:** *Gort* from *The Day the Earth Stood Still* (1951 / 2008).
+* **Craftsmanship:** *Made with ❤️ in California.*

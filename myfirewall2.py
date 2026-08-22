@@ -38,7 +38,7 @@ class GortFirewallApp(App):
     """Main Textual Application Controller for Gort Firewall."""
 
     TITLE = "GORT - Autonomous Linux Firewall & Network Inspector"
-    SUB_TITLE = "Zero-Trust Packet Filtering & Antigravity AI Engine (\"Klaatu barada nikto\")"
+    SUB_TITLE = "Zero-Trust Packet Filtering & Antigravity AI Engine (Made with ❤️ in California)"
 
     CSS = """
     Screen {

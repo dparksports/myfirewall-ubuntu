@@ -31,7 +31,7 @@ def draw_infographic():
     # Title Banner
     ax.text(800, 850, "GORT FIREWALL — ENTERPRISE ARCHITECTURE", fontsize=24, fontweight='bold',
             color=text_white, ha='center', va='center', fontfamily='sans-serif')
-    ax.text(800, 820, "Autonomous Linux Kernel Netfilter Threat Mitigation & Textual TUI Engine  •  \"Klaatu barada nikto\"",
+    ax.text(800, 820, "Autonomous Linux Kernel Netfilter Threat Mitigation & Textual TUI Engine  •  Made with ❤️ in California",
             fontsize=12, color=cyan, ha='center', va='center', fontfamily='sans-serif')
 
     # Sub-banner stats / tags

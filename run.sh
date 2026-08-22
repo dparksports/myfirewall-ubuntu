@@ -25,7 +25,7 @@ print_banner() {
     echo " | |  _| | | | |_) || |   | |_   | || |_) |  _|  \ \  / / _ \ | |   | |    "
     echo " | |_| | |_| |  _ < | |   |  _|  | ||  _ <| |___  \ \/ / ___ \| |___| |___ "
     echo "  \____|\___/|_| \_\|_|   |_|   |___|_| \_\_____|  \_/_/   \_\_____|_____| "
-    echo "               \"Klaatu barada nikto\" • Autonomous Linux Defense"
+    echo "       Autonomous Linux Endpoint Defense • Made with ❤️ in California"
     echo -e "${NC}"
 }
 

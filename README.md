@@ -12,7 +12,7 @@
 [![Autonomous Defense: Active Sentinel](https://img.shields.io/badge/Defense-Autonomous%20Sentinel%20%26%20Bad%20USB-red.svg)]()
 [![AI: Antigravity SDK & Gemini](https://img.shields.io/badge/AI-Google%20Antigravity%20SDK-purple.svg)]()
 
-> *"Klaatu barada nikto"* — Named after the silent, indestructible robotic guardian from *The Day the Earth Stood Still*, **Gort** is an autonomous, non-rolling terminal network inspector, Zero-Trust security monitor, Bad USB threat sentinel, and kernel-level Netfilter packet filtering engine for Linux workstations, servers, and cloud endpoints.
+> **Gort** is an autonomous, non-rolling terminal network inspector, Zero-Trust security monitor, Bad USB threat sentinel, and kernel-level Netfilter packet filtering engine for Linux workstations, servers, and cloud endpoints. Built with modern Python, Textual, and Google Antigravity AI.
 
 Gort combines low-level Linux Kernel socket telemetry with a **Zero-Trust scoring engine (0-100)**, an **Autonomous Sentinel** for neutralizing reverse shells and Bad USB hardware injectors without false positives, and an embedded **Google Antigravity / Gemini AI Copilot** that translates complex network telemetry into plain English.
 
@@ -151,8 +151,8 @@ gort-firewall/
 
 ---
 
-## 📜 License & Acknowledgments
+## 📜 License & Craftsmanship
 
 * **License:** Apache License 2.0.
 * **Repository:** [https://github.com/dparksports/gort-firewall](https://github.com/dparksports/gort-firewall)
-* **Inspired by:** *Gort* from *The Day the Earth Stood Still* (1951 / 2008).
+* **Craftsmanship:** *Made with ❤️ in California.*
