@@ -524,52 +524,55 @@ class LoginModal(ModalScreen):
         status_text = (
             f"• [bold white]Active Status:[/] [{status_style}]{auth_desc}[/]\n"
             f"• [bold cyan]Google Antigravity SDK:[/] {'✅ Installed' if aia.HAS_ANTIGRAVITY_SDK else '⚠️ Standalone Mode'}\n"
-            "• Connect your Google account to enable instant, natural-language security advice!"
+            "• Connect your Google account to enable real-time AI security advice!"
         )
 
         with Vertical(id="login-dialog"):
-            yield Label("🌐 Google Account & Gemini AI Configuration", id="login-title")
+            yield Label("🌐 Google Gemini AI Configuration", id="login-title")
             yield Static(status_text, id="login-status")
-            yield Static("[bold white]Option A: 1-Click Browser OAuth Sign-In (Recommended)[/]")
-            yield Static("Clicking below opens your default web browser to approve Google account access without copying keys.")
+            yield Static("[bold white]Step 1: Get Free Key from Google AI Studio[/]")
+            yield Static("Click below to open Google AI Studio in your browser and generate a key with your Google account:")
             with Horizontal(id="login-buttons"):
-                yield Button("🌐 Sign In with Google (Browser)", variant="success", id="btn-browser-login")
+                yield Button("🌐 Open Google AI Studio Key Page", variant="success", id="btn-open-studio")
             
-            yield Static("\n[bold white]Option B: Manual Gemini API Key Entry[/]", id="login-input-box")
-            yield Input(placeholder="Paste AIzaSy... key or leave blank", id="login-api-key")
+            yield Static("\n[bold white]Step 2: Paste Gemini API Key[/]", id="login-input-box")
+            yield Input(placeholder="Paste AIzaSy... key here", id="login-api-key")
             with Horizontal(id="login-bottom-buttons"):
-                yield Button("Save Key", variant="primary", id="btn-save-key")
+                yield Button("Save & Test Key", variant="primary", id="btn-save-key")
                 yield Button("Close (Esc)", variant="default", id="btn-cancel")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id
-        if button_id == "btn-browser-login":
+        if button_id == "btn-open-studio":
+            auth_manager.open_browser_safe("https://aistudio.google.com/app/apikey")
             status_widget = self.query_one("#login-status", Static)
             status_widget.update(
-                "[bold cyan]⏳ Opening your web browser for Google Sign-In...[/]\n"
-                "[italic text-muted]Approve in browser, then return here. Listening on localhost:8085...[/]"
+                "[bold cyan]🌐 Opened Google AI Studio in your browser![/]\n"
+                "[italic text-muted]Sign in with Google, click 'Create API key', then paste it below.[/]"
             )
-            # Run browser login in worker thread
-            def do_login():
-                success, msg = auth_manager.login_with_browser()
-                def update_ui():
-                    if success:
-                        status_widget.update(f"✅ [bold green]{msg}[/]\nGoogle account is now active!")
-                    else:
-                        status_widget.update(f"⚠️ [bold red]{msg}[/]")
-                self.app.call_from_thread(update_ui)
-
-            import threading
-            threading.Thread(target=do_login, daemon=True).start()
 
         elif button_id == "btn-save-key":
             key_val = self.query_one("#login-api-key", Input).value.strip()
-            if key_val:
-                auth_manager.save_api_key(key_val)
-                status_widget = self.query_one("#login-status", Static)
-                status_widget.update("✅ [bold green]API Key saved successfully to ~/.config/myfirewall/config.json![/]")
-            else:
-                self.notify("Please enter an API key or use 1-Click Browser Login.", severity="warning")
+            if not key_val:
+                self.notify("Please paste your Gemini API key first.", severity="warning")
+                return
+
+            status_widget = self.query_one("#login-status", Static)
+            status_widget.update("[bold cyan]⏳ Testing key with Google Gemini API...[/]")
+
+            def do_validate():
+                valid, msg = auth_manager.validate_api_key(key_val)
+                def update_ui():
+                    if valid:
+                        auth_manager.save_api_key(key_val)
+                        status_widget.update(f"✅ [bold green]{msg}[/]\nKey saved to ~/.config/myfirewall/config.json")
+                        self.notify("Google Gemini AI is now active!", title="Connected", severity="information")
+                    else:
+                        status_widget.update(f"❌ [bold red]{msg}[/]\nPlease check the key and try again.")
+                self.app.call_from_thread(update_ui)
+
+            import threading
+            threading.Thread(target=do_validate, daemon=True).start()
 
         elif button_id == "btn-cancel":
             self.dismiss()

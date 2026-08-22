@@ -1,18 +1,15 @@
 """
-Google & Antigravity Authentication Manager for Gort Firewall.
-Provides seamless 1-click browser OAuth 2.0 Google account login,
-credential detection (~/.gemini/, ADC, config.json), and token storage
-so users do not need to manually copy and paste API keys.
+Google Gemini Authentication Manager for Gort Firewall.
+Provides seamless Google account setup via Google AI Studio,
+environment variables, configuration file persistence, and live key validation.
 """
 
 import os
 import sys
 import json
-import socket
+import requests
 import subprocess
-import threading
 import webbrowser
-import http.server
 from typing import Optional, Tuple, Dict, Any
 
 
@@ -42,51 +39,8 @@ def ensure_config_dir():
     os.makedirs(GEMINI_AUTH_DIR, exist_ok=True)
 
 
-class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
-    """Temporary HTTP handler to capture Google OAuth redirect code."""
-    auth_code: Optional[str] = None
-    server_instance = None
-
-    def do_GET(self):
-        query = self.path
-        if "/oauth/callback" in query:
-            # Parse code or token from URL
-            if "code=" in query:
-                code_part = query.split("code=")[1].split("&")[0]
-                OAuthCallbackHandler.auth_code = code_part
-            elif "token=" in query:
-                token_part = query.split("token=")[1].split("&")[0]
-                OAuthCallbackHandler.auth_code = token_part
-            else:
-                OAuthCallbackHandler.auth_code = "google_authenticated_session"
-
-            self.send_response(200)
-            self.send_header("Content-type", "text/html")
-            self.end_headers()
-            html = """
-            <html>
-            <head><title>Gort Firewall - Authentication Successful</title></head>
-            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b0f19; color: #fff; text-align: center; padding: 60px;">
-                <div style="max-width: 520px; margin: 0 auto; background: #131b2e; border: 1px solid #00f0ff; border-radius: 12px; padding: 40px; box-shadow: 0 8px 32px rgba(0,240,255,0.15);">
-                    <h1 style="color: #00f0ff; margin-bottom: 10px;">✅ Authentication Successful!</h1>
-                    <p style="color: #90a4ae; font-size: 16px; line-height: 1.5;">Your Google account has been connected to <b>Gort Firewall</b>.</p>
-                    <p style="color: #00e676; font-size: 14px; margin-top: 20px;">You can now close this tab and return to your terminal.</p>
-                </div>
-            </body>
-            </html>
-            """
-            self.wfile.write(html.encode("utf-8"))
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-    def log_message(self, format, *args):
-        # Silence standard HTTP access logging to keep terminal clean
-        pass
-
-
 class GoogleAuthManager:
-    """Manages Google Account sessions and OAuth loopback sign-in."""
+    """Manages Google Gemini Account sessions, API keys, and validation."""
 
     def __init__(self):
         ensure_config_dir()
@@ -96,34 +50,34 @@ class GoogleAuthManager:
         Checks if an active Google or Gemini credential is available.
         Returns (is_auth, auth_type_description).
         """
-        # 1. Check Antigravity / Gemini Auth File
+        # 1. Check Environment Variables
+        env_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if env_key and len(env_key.strip()) > 5:
+            k = env_key.strip()
+            masked = k[:6] + "..." + k[-4:] if len(k) > 10 else "Active Key"
+            return True, f"Environment Key ({masked})"
+
+        # 2. Check Gort config.json
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "r") as f:
+                    data = json.load(f)
+                    key = data.get("gemini_api_key") or data.get("google_api_key")
+                    if key and len(key.strip()) > 5:
+                        k = key.strip()
+                        masked = k[:6] + "..." + k[-4:] if len(k) > 10 else "Active Key"
+                        return True, f"Saved Gemini Key ({masked})"
+            except Exception:
+                pass
+
+        # 3. Check Antigravity / Gemini Auth File
         if os.path.exists(GEMINI_AUTH_FILE):
             try:
                 with open(GEMINI_AUTH_FILE, "r") as f:
                     data = json.load(f)
                     if data.get("access_token") or data.get("refresh_token") or data.get("token"):
                         user_email = data.get("email") or "Google Account"
-                        return True, f"Google OAuth ({user_email})"
-            except Exception:
-                pass
-
-        # 2. Check Environment Variables
-        env_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        if env_key:
-            masked = env_key[:6] + "..." + env_key[-4:] if len(env_key) > 10 else "Active Key"
-            return True, f"Environment Key ({masked})"
-
-        # 3. Check Gort config.json
-        if os.path.exists(CONFIG_FILE):
-            try:
-                with open(CONFIG_FILE, "r") as f:
-                    data = json.load(f)
-                    key = data.get("gemini_api_key") or data.get("google_api_key")
-                    if key:
-                        masked = key[:6] + "..." + key[-4:] if len(key) > 10 else "Active Key"
-                        return True, f"Saved API Key ({masked})"
-                    if data.get("google_oauth_token"):
-                        return True, "Google OAuth Token"
+                        return True, f"Google Session ({user_email})"
             except Exception:
                 pass
 
@@ -131,9 +85,47 @@ class GoogleAuthManager:
         if os.path.exists(GCLOUD_ADC_FILE):
             return True, "Google Cloud ADC"
 
-        return False, "Not Connected (Offline Mode)"
+        return False, "Not Connected (Offline Heuristic Mode)"
 
-    def save_api_key(self, api_key: str):
+    def get_api_key(self) -> Optional[str]:
+        """Returns the active Gemini API Key if available."""
+        env_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if env_key and len(env_key.strip()) > 5:
+            return env_key.strip()
+
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "r") as f:
+                    data = json.load(f)
+                    key = data.get("gemini_api_key") or data.get("google_api_key")
+                    if key and len(key.strip()) > 5:
+                        return key.strip()
+            except Exception:
+                pass
+        return None
+
+    def validate_api_key(self, api_key: str) -> Tuple[bool, str]:
+        """Performs a lightweight validation test request to Google Gemini API."""
+        key = api_key.strip()
+        if not key:
+            return False, "API key cannot be empty."
+
+        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
+        payload = {
+            "contents": [{"parts": [{"text": "Hello, confirm connection."}]}]
+        }
+        try:
+            resp = requests.post(endpoint, json=payload, timeout=8.0)
+            if resp.status_code == 200:
+                return True, "API Key is valid and active!"
+            else:
+                error_data = resp.json().get("error", {})
+                error_msg = error_data.get("message", f"HTTP {resp.status_code}")
+                return False, f"Google API Error: {error_msg}"
+        except Exception as e:
+            return False, f"Connection failed: {e}"
+
+    def save_api_key(self, api_key: str) -> bool:
         """Saves a Gemini API key to ~/.config/myfirewall/config.json."""
         ensure_config_dir()
         data = {}
@@ -144,36 +136,30 @@ class GoogleAuthManager:
             except Exception:
                 data = {}
         data["gemini_api_key"] = api_key.strip()
-        with open(CONFIG_FILE, "w") as f:
-            json.dump(data, f, indent=2)
-        os.chmod(CONFIG_FILE, 0o600)
+        try:
+            with open(CONFIG_FILE, "w") as f:
+                json.dump(data, f, indent=2)
+            os.chmod(CONFIG_FILE, 0o600)
+            return True
+        except Exception:
+            return False
 
-    def save_oauth_session(self, token_data: Dict[str, Any]):
+    def save_oauth_session(self, token_data: Dict[str, Any]) -> bool:
         """Persists OAuth session data to ~/.gemini/auth.json and config.json."""
         ensure_config_dir()
-        with open(GEMINI_AUTH_FILE, "w") as f:
-            json.dump(token_data, f, indent=2)
-        os.chmod(GEMINI_AUTH_FILE, 0o600)
-
-        data = {}
-        if os.path.exists(CONFIG_FILE):
-            try:
-                with open(CONFIG_FILE, "r") as f:
-                    data = json.load(f)
-            except Exception:
-                pass
-        data["google_oauth_token"] = token_data.get("access_token", "active")
-        data["email"] = token_data.get("email", "Google User")
-        with open(CONFIG_FILE, "w") as f:
-            json.dump(data, f, indent=2)
-        os.chmod(CONFIG_FILE, 0o600)
+        try:
+            with open(GEMINI_AUTH_FILE, "w") as f:
+                json.dump(token_data, f, indent=2)
+            os.chmod(GEMINI_AUTH_FILE, 0o600)
+            return True
+        except Exception:
+            return False
 
     def open_browser_safe(self, url: str) -> bool:
-        """Safely opens the browser, handling root/sudo execution gracefully."""
+        """Safely opens a URL in the user's default browser."""
         sudo_user = os.environ.get("SUDO_USER")
         if sudo_user and hasattr(os, "geteuid") and os.geteuid() == 0:
             try:
-                # Launch browser as the non-root desktop user
                 subprocess.Popen(["sudo", "-u", sudo_user, "xdg-open", url],
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 return True
@@ -184,68 +170,42 @@ class GoogleAuthManager:
         except Exception:
             return False
 
-    def login_with_browser(self, port: int = 8085, timeout: int = 120) -> Tuple[bool, str]:
-        """
-        Launches local loopback listener and opens system default browser
-        for 1-click Google OAuth authentication.
-        """
-        # Find an available port if default is busy
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = sock.connect_ex(('127.0.0.1', port))
-        sock.close()
-        if result == 0:
-            port = 8086
+    def interactive_terminal_login(self) -> bool:
+        """Runs an interactive terminal setup wizard for Google Gemini."""
+        key_url = "https://aistudio.google.com/app/apikey"
+        print("\n" + "="*72)
+        print("🤖 GORT FIREWALL — GOOGLE GEMINI ACCOUNT CONFIGURATION")
+        print("="*72)
+        print("Connect your Google account to enable real-time AI security advice,\n"
+              "packet analysis, and interactive copilot Q&A.\n")
+        print(f"👉 Opening Google AI Studio in your browser:\n   {key_url}\n")
+        print("1. Sign in with your Google account.")
+        print("2. Click 'Create API key' and copy your key.\n" + "-"*72)
 
-        server_address = ('127.0.0.1', port)
+        self.open_browser_safe(key_url)
+
         try:
-            httpd = http.server.HTTPServer(server_address, OAuthCallbackHandler)
-        except Exception as e:
-            return False, f"Could not bind local callback port {port}: {e}"
+            user_input = input("\nPaste your Gemini API Key (or press Enter to cancel): ").strip()
+        except (KeyboardInterrupt, EOFError):
+            print("\nSetup cancelled.")
+            return False
 
-        OAuthCallbackHandler.auth_code = None
+        if not user_input:
+            print("No key provided. Gort will continue in offline heuristic mode.")
+            return False
 
-        # OAuth Authorization Endpoint URL
-        redirect_uri = f"http://127.0.0.1:{port}/oauth/callback"
-        auth_url = (
-            f"https://accounts.google.com/o/oauth2/v2/auth?"
-            f"client_id=407408718192.apps.googleusercontent.com&"
-            f"response_type=code&"
-            f"scope=openid%20email%20profile%20https://www.googleapis.com/auth/generative-language&"
-            f"redirect_uri={redirect_uri}&"
-            f"access_type=offline&"
-            f"prompt=consent"
-        )
-
-        print("\n" + "="*70)
-        print("🌐 GOOGLE ACCOUNT AUTHENTICATION")
-        print("="*70)
-        print("👉 Opening your web browser to sign in...")
-        print(f"\nIf your browser does not open automatically, visit this URL:\n\n  {auth_url}\n")
-        print(f"⏳ Waiting for authorization callback on localhost:{port} (timeout: {timeout}s)...")
-        print("="*70 + "\n")
-
-        # Start background server thread
-        server_thread = threading.Thread(target=httpd.handle_request, daemon=True)
-        server_thread.start()
-
-        # Open user browser safely
-        self.open_browser_safe(auth_url)
-
-        # Wait for callback
-        server_thread.join(timeout=timeout)
-        httpd.server_close()
-
-        if OAuthCallbackHandler.auth_code:
-            token_data = {
-                "access_token": OAuthCallbackHandler.auth_code,
-                "refresh_token": f"rt_{OAuthCallbackHandler.auth_code[:12]}",
-                "email": "Google User",
-                "auth_provider": "google_antigravity_oauth"
-            }
-            self.save_oauth_session(token_data)
-            return True, "Successfully logged in with Google Account!"
+        print("\n⏳ Validating key with Google Gemini API...")
+        valid, msg = self.validate_api_key(user_input)
+        if valid:
+            self.save_api_key(user_input)
+            print(f"✅ {msg}")
+            print(f"💾 Saved to: {CONFIG_FILE}")
+            print("🎉 Google Gemini AI is now active across Gort Firewall!\n")
+            return True
         else:
-            return False, "Login timed out or was cancelled by user."
+            print(f"❌ {msg}")
+            print("Please double check your key and try again.\n")
+            return False
 
 
 # Global Singleton

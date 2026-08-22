@@ -543,12 +543,7 @@ MyFirewallApp = GortFirewallApp
 
 def main():
     if "--login" in sys.argv:
-        print("🌐 Launching Google Account Browser OAuth sign-in...")
-        success, msg = auth_manager.login_with_browser()
-        if success:
-            print(f"✅ {msg}")
-        else:
-            print(f"⚠️ {msg}")
+        success = auth_manager.interactive_terminal_login()
         sys.exit(0 if success else 1)
 
     core.load_config()

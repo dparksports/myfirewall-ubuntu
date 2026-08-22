@@ -50,7 +50,7 @@ class TestGoogleAuthManager(unittest.TestCase):
 
         is_auth, desc = auth_mgr.is_authenticated()
         self.assertTrue(is_auth)
-        self.assertIn("Saved API Key", desc)
+        self.assertIn("Saved Gemini Key", desc)
 
     def test_oauth_session_persistence(self):
         """Verify OAuth session saving and detection."""
@@ -64,7 +64,7 @@ class TestGoogleAuthManager(unittest.TestCase):
 
         is_auth, desc = auth_mgr.is_authenticated()
         self.assertTrue(is_auth)
-        self.assertIn("Google OAuth", desc)
+        self.assertIn("Google Session", desc)
         self.assertIn("developer@example.com", desc)
 
 
