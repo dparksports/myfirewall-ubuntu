@@ -6,5 +6,8 @@ venv/
 env/
 .env
 debug.log
+*.log
+connection_history.log
+error.txt
 *.deb
 rules.json
