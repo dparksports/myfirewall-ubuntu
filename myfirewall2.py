@@ -1,11 +1,12 @@
 # myfirewall2.py
 """
-MyFirewall - Modern Non-Rolling Terminal Network Monitor & Firewall
-Powered by Textual & Linux Kernel ProcFS / Netfilter
+GORT Firewall - Autonomous Linux Endpoint Defense & Connection Inspector
+Powered by Textual TUI, Linux Kernel Netfilter, Zero-Trust Engine & Google Antigravity AI
 """
 
 import sys
 import time
+import asyncio
 import ipaddress
 from threading import Thread
 
@@ -29,6 +30,8 @@ from rich.text import Text
 
 import myfirewall_core as core
 from process_resolver import get_detailed_process_info
+import zero_trust_engine as zte
+import ai_advisor as aia
 
 
 def fmt_duration(first_seen):
@@ -111,7 +114,7 @@ class BlockModal(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="block-dialog"):
-            yield Label("🛡️ Block / Unblock Remote IP", id="block-title")
+            yield Label("🛡️ Block / Unblock Remote IP (Netfilter)", id="block-title")
             yield Label("Enter IP address or CIDR range to toggle:")
             yield Input(value=self.default_ip, placeholder="e.g. 142.250.190.46 or 192.168.1.0/24", id="block-input")
             with Horizontal(id="block-buttons"):
@@ -182,7 +185,7 @@ class IgnoreModal(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="ignore-dialog"):
-            yield Label("🙈 Ignore / Un-ignore Process or IP", id="ignore-title")
+            yield Label("🙈 Ignore / Hide Process or IP", id="ignore-title")
             yield Label("Enter Process Name (e.g. 'chrome') or IP/CIDR to hide:")
             yield Input(value=self.default_name, placeholder="e.g. chrome, discord, or 10.0.0.0/8", id="ignore-input")
             with Horizontal(id="ignore-buttons"):
@@ -226,6 +229,162 @@ class IgnoreModal(ModalScreen):
         self.dismiss(val)
 
 
+class ExplainModal(ModalScreen):
+    """Modal showing real-time AI safety explanation for a connection."""
+
+    CSS = """
+    ExplainModal {
+        align: center middle;
+    }
+    #explain-dialog {
+        width: 75;
+        height: auto;
+        border: thick $primary;
+        background: $surface;
+        padding: 1 2;
+    }
+    #explain-title {
+        text-style: bold;
+        color: $primary;
+        margin-bottom: 1;
+        text-align: center;
+    }
+    #explain-content {
+        margin-bottom: 1;
+        height: auto;
+    }
+    #explain-buttons {
+        align: center middle;
+        height: auto;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "dismiss", "Close"),
+        Binding("enter", "dismiss", "Close"),
+    ]
+
+    def __init__(self, conn: dict):
+        super().__init__()
+        self.conn = conn
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="explain-dialog"):
+            yield Label("🤖 Gort AI & Zero-Trust Safety Analysis", id="explain-title")
+            yield Static("⏳ Consulting Gort AI Agent & evaluating Zero-Trust telemetry...", id="explain-content")
+            with Horizontal(id="explain-buttons"):
+                yield Button("Close (Esc)", variant="primary", id="btn-close")
+
+    def on_mount(self) -> None:
+        self.run_worker(self._fetch_explanation(), exclusive=True)
+
+    async def _fetch_explanation(self) -> None:
+        exp = await aia.advisor.explain_connection(self.conn)
+        zt = zte.evaluate_zero_trust(self.conn)
+        anom_str = f"\n[bold yellow]Anomalies:[/] {', '.join(zt['anomalies'])}" if zt["anomalies"] else ""
+        
+        full_text = (
+            f"[bold cyan]Process:[/] [green]{self.conn.get('name', 'Unknown')}[/] (PID: {self.conn.get('pid', '?')})\n"
+            f"[bold cyan]Destination:[/] {self.conn.get('remote_ip')}:{self.conn.get('remote_port')} ({self.conn.get('geo', 'Unknown')})\n"
+            f"[bold cyan]Zero-Trust Zone:[/] {zt['zone_desc']}\n"
+            f"[bold cyan]Trust Score:[/] {zt['badge']}{anom_str}\n\n"
+            f"[bold white]AI Safety Assessment:[/] \n{exp}"
+        )
+        self.query_one("#explain-content", Static).update(full_text)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        self.dismiss()
+
+    def on_key(self, event) -> None:
+        if event.key in ("escape", "enter", "q"):
+            self.dismiss()
+
+
+class CopilotModal(ModalScreen):
+    """Interactive Ask Gort AI Copilot modal."""
+
+    CSS = """
+    CopilotModal {
+        align: center middle;
+    }
+    #copilot-dialog {
+        width: 80;
+        height: auto;
+        border: thick $accent;
+        background: $surface;
+        padding: 1 2;
+    }
+    #copilot-title {
+        text-style: bold;
+        color: $accent;
+        margin-bottom: 1;
+        text-align: center;
+    }
+    #copilot-input {
+        margin-bottom: 1;
+    }
+    #copilot-response {
+        height: 7;
+        overflow-y: auto;
+        background: $surface-darken-1;
+        padding: 1;
+        margin-bottom: 1;
+        border: solid $accent-darken-2;
+    }
+    #copilot-buttons {
+        align: right middle;
+        height: auto;
+    }
+    #copilot-buttons Button {
+        margin-left: 1;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "cancel", "Close"),
+    ]
+
+    def __init__(self, active_conns: list):
+        super().__init__()
+        self.active_conns = active_conns
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="copilot-dialog"):
+            yield Label("💬 Ask Gort AI Copilot (Google Gemini / Antigravity)", id="copilot-title")
+            yield Input(placeholder="Ask anything: e.g. 'Is my connection secure?', 'Why is Chrome sending data?'", id="copilot-input")
+            yield Static("Ask a question above to get real-time security advice and firewall guidance.", id="copilot-response")
+            with Horizontal(id="copilot-buttons"):
+                yield Button("Ask", variant="primary", id="btn-ask")
+                yield Button("Close (Esc)", variant="default", id="btn-close")
+
+    def on_mount(self) -> None:
+        self.query_one("#copilot-input", Input).focus()
+
+    def action_cancel(self) -> None:
+        self.dismiss()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-ask":
+            self._submit_question()
+        else:
+            self.dismiss()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        self._submit_question()
+
+    def _submit_question(self) -> None:
+        q = self.query_one("#copilot-input", Input).value.strip()
+        if not q:
+            return
+        resp_widget = self.query_one("#copilot-response", Static)
+        resp_widget.update("⏳ Thinking...")
+        self.run_worker(self._ask_worker(q), exclusive=True)
+
+    async def _ask_worker(self, q: str) -> None:
+        ans = await aia.advisor.ask_copilot(q, self.active_conns)
+        self.query_one("#copilot-response", Static).update(ans)
+
+
 class HelpModal(ModalScreen):
     """Modal displaying keyboard navigation and shortcuts."""
 
@@ -234,7 +393,7 @@ class HelpModal(ModalScreen):
         align: center middle;
     }
     #help-dialog {
-        width: 70;
+        width: 75;
         height: auto;
         border: thick $accent;
         background: $surface;
@@ -257,16 +416,18 @@ class HelpModal(ModalScreen):
 
     def compose(self) -> ComposeResult:
         help_text = (
-            "[bold cyan]Navigation & Shortcuts:[/]\n\n"
+            "[bold cyan]Navigation & Zero-Trust Shortcuts:[/]\n\n"
             "• [bold white]↑ / ↓ / PgUp / PgDn / Mouse[/] : Scroll & navigate connections\n"
-            "• [bold yellow]B[/] : Block / Unblock highlighted remote IP (or manual IP)\n"
+            "• [bold green]E[/] : [bold green]Explain with AI[/] (Antigravity & Zero-Trust Plain English Breakdown)\n"
+            "• [bold cyan]A / Space[/] : [bold cyan]Ask Gort Copilot[/] (Interactive AI security assistant)\n"
+            "• [bold yellow]B[/] : Block / Unblock highlighted remote IP (Netfilter iptables)\n"
             "• [bold yellow]I[/] : Ignore / Hide highlighted process or IP\n"
             "• [bold green]/[/] : Search & filter by process, IP, port, host, or protocol\n"
             "• [bold white]Esc[/] : Clear search filter & refocus table\n"
-            "• [bold white]1 - 5[/] : Switch tabs (All / Outbound / Inbound / Blocked / Ignored)\n"
+            "• [bold white]1 - 6[/] : Switch tabs (All / Outbound / Inbound / Zero-Trust / Blocked / Ignored)\n"
             "• [bold white]R[/] : Reload saved config\n"
             "• [bold white]H / ?[/] : Open this Help dialog\n"
-            "• [bold red]Q / Ctrl+C[/] : Quit MyFirewall cleanly\n"
+            "• [bold red]Q / Ctrl+C[/] : Quit Gort Firewall cleanly\n"
         )
         with Vertical(id="help-dialog"):
             yield Label("🤖 Gort Firewall Keyboard Shortcuts", id="help-title")
@@ -278,7 +439,7 @@ class HelpModal(ModalScreen):
         self.dismiss()
 
     def on_key(self, event) -> None:
-        if event.key in ("escape", "enter", "space", "q"):
+        if event.key in ("escape", "enter", "q"):
             self.dismiss()
 
 
@@ -288,9 +449,7 @@ class GortFirewallApp(App):
     """Main Textual Application for Gort Firewall."""
 
     TITLE = "GORT - Autonomous Linux Firewall & Network Inspector"
-    SUB_TITLE = "Real-Time Connection Inspection & Kernel Packet Dropper (\"Klaatu barada nikto\")"
-
-MyFirewallApp = GortFirewallApp
+    SUB_TITLE = "Zero-Trust Packet Filtering & Antigravity AI Engine (\"Klaatu barada nikto\")"
 
     CSS = """
     Screen {
@@ -372,15 +531,19 @@ MyFirewallApp = GortFirewallApp
 
     BINDINGS = [
         Binding("q", "quit_app", "Quit", priority=True),
-        Binding("b", "block", "Block IP"),
-        Binding("i", "ignore", "Ignore Process"),
+        Binding("e", "explain_ai", "Explain (AI)", show=True),
+        Binding("a", "ask_copilot", "Ask Copilot", show=True),
+        Binding("space", "ask_copilot", "Ask Copilot", show=False),
+        Binding("b", "block", "Block IP", show=True),
+        Binding("i", "ignore", "Ignore Process", show=True),
         Binding("slash", "search", "Search / Filter", show=True),
-        Binding("escape", "clear_filter", "Clear Filter / Refocus", show=True),
+        Binding("escape", "clear_filter", "Clear Filter", show=True),
         Binding("1", "tab_all", "All Conns", show=False),
         Binding("2", "tab_out", "Outbound", show=False),
         Binding("3", "tab_in", "Inbound", show=False),
-        Binding("4", "tab_blocked", "Blocked", show=False),
-        Binding("5", "tab_ignored", "Ignored", show=False),
+        Binding("4", "tab_zt", "Zero-Trust", show=False),
+        Binding("5", "tab_blocked", "Blocked", show=False),
+        Binding("6", "tab_ignored", "Ignored", show=False),
         Binding("r", "reload", "Reload Config", show=True),
         Binding("h", "help", "Help", show=True),
         Binding("question_mark", "help", "Help", show=False),
@@ -397,6 +560,7 @@ MyFirewallApp = GortFirewallApp
             Tab("All Connections", id="tab-all"),
             Tab("Outbound Only", id="tab-out"),
             Tab("Inbound Only", id="tab-in"),
+            Tab("Zero-Trust Alerts", id="tab-zt"),
             Tab("Blocked Rules", id="tab-blocked"),
             Tab("Ignored Rules", id="tab-ignored"),
             id="tabs-bar"
@@ -409,7 +573,7 @@ MyFirewallApp = GortFirewallApp
         with Vertical(id="table-container"):
             yield DataTable(id="conns-table", cursor_type="row", zebra_stripes=True)
         with Vertical(id="detail-panel"):
-            yield Label("🔎 Selected Connection Inspector", id="detail-header")
+            yield Label("🔎 Selected Connection & Zero-Trust Telemetry Inspector", id="detail-header")
             yield Static("Select a connection row above to inspect detailed telemetry.", id="detail-body")
         yield Footer()
 
@@ -417,15 +581,16 @@ MyFirewallApp = GortFirewallApp
         # Initialize table columns
         table = self.query_one("#conns-table", DataTable)
         table.add_column("#", key="idx", width=4)
+        table.add_column("Zero-Trust", key="zt_risk", width=16)
         table.add_column("Proto", key="proto", width=6)
         table.add_column("Dir", key="dir", width=5)
-        table.add_column("Process", key="proc", width=22)
+        table.add_column("Process", key="proc", width=20)
         table.add_column("PID", key="pid", width=7)
-        table.add_column("Remote Endpoint", key="remote", width=24)
-        table.add_column("Geo / Hostname", key="geo", width=30)
+        table.add_column("Remote Endpoint", key="remote", width=22)
+        table.add_column("Geo / Hostname", key="geo", width=26)
         table.add_column("Duration", key="duration", width=9)
-        table.add_column("Pkts ↑", key="pkts_tx", width=8)
-        table.add_column("Pkts ↓", key="pkts_rx", width=8)
+        table.add_column("Pkts ↑", key="pkts_tx", width=7)
+        table.add_column("Pkts ↓", key="pkts_rx", width=7)
         table.add_column("Status", key="status", width=10)
 
         # Start periodic UI update (every 0.5s)
@@ -469,6 +634,12 @@ MyFirewallApp = GortFirewallApp
             elif self.active_tab == "tab-in":
                 if direction != "INBOUND" or is_ignored or (core.is_local_ip(ip) and not is_blocked):
                     continue
+            elif self.active_tab == "tab-zt":
+                if is_ignored or (core.is_local_ip(ip) and not is_blocked):
+                    continue
+                zt = zte.evaluate_zero_trust(c)
+                if zt["score"] >= 80 and not zt["anomalies"]:
+                    continue  # Only show flagged / unverified connections
             elif self.active_tab == "tab-blocked":
                 if not is_blocked:
                     continue
@@ -502,12 +673,13 @@ MyFirewallApp = GortFirewallApp
         ignored_count = len(core.ignored_ips) + len(core.ignored_names) + len(core.ignored_cidrs)
 
         mock_str = " [bold red](MOCK MODE)[/]" if core.is_mock_mode() else " [bold green](FIREWALL ACTIVE)[/]"
+        ai_str = " [bold magenta]🤖 AI: ACTIVE[/]" if aia.HAS_ANTIGRAVITY_SDK else " [dim]🤖 AI: HEURISTIC[/]"
 
         metrics_text = (
             f" ⚡ [bold cyan]Bandwidth:[/] Rx: [green]{rx_str}[/] | Tx: [yellow]{tx_str}[/]  "
             f"│  📊 [bold cyan]Connections:[/] [white]{active_count}[/] active, [dim]{inactive_count}[/] inactive  "
             f"│  🛡️ [bold red]{blocked_count}[/] blocked, [bold yellow]{ignored_count}[/] ignored"
-            f"{mock_str}"
+            f"{mock_str}{ai_str}"
         )
         self.query_one("#metrics-bar", Static).update(metrics_text)
 
@@ -540,6 +712,10 @@ MyFirewallApp = GortFirewallApp
             pid_str = str(c["pid"]) if c.get("pid") else "?"
             is_blocked = remote_ip in core.blocked_ips
 
+            # Zero-Trust Evaluation
+            zt = zte.evaluate_zero_trust(c)
+            zt_badge_text = Text.from_markup(zt["badge"])
+
             if is_blocked:
                 proc_text = Text(f"{c['name']} [BLKD]", style="bold strike red")
                 remote_disp = Text(f"{remote_ip}:{remote_port}", style="bold red")
@@ -563,6 +739,7 @@ MyFirewallApp = GortFirewallApp
 
             row_data = [
                 str(i + 1),
+                zt_badge_text,
                 proto,
                 dir_text,
                 proc_text,
@@ -576,7 +753,7 @@ MyFirewallApp = GortFirewallApp
             ]
 
             if row_key in table.rows:
-                for col_k, cell_v in zip(["idx", "proto", "dir", "proc", "pid", "remote", "geo", "duration", "pkts_tx", "pkts_rx", "status"], row_data):
+                for col_k, cell_v in zip(["idx", "zt_risk", "proto", "dir", "proc", "pid", "remote", "geo", "duration", "pkts_tx", "pkts_rx", "status"], row_data):
                     table.update_cell(row_key, col_k, cell_v)
             else:
                 table.add_row(*row_data, key=row_key)
@@ -630,6 +807,10 @@ MyFirewallApp = GortFirewallApp
             except Exception:
                 pass
 
+        # Zero-Trust Evaluation
+        zt = zte.evaluate_zero_trust(conn)
+        anom_str = f" │ [bold yellow]Anomalies:[/] {', '.join(zt['anomalies'])}" if zt["anomalies"] else ""
+
         pkts_tx = fmt_pkts(conn.get("packets_tx"))
         pkts_rx = fmt_pkts(conn.get("packets_rx"))
         bytes_tx = core.format_bytes(conn.get("bytes_tx"))
@@ -638,7 +819,8 @@ MyFirewallApp = GortFirewallApp
 
         detail_markup = (
             f"[bold cyan]Process:[/] [green]{proc_name}[/] (PID: [yellow]{pid or '?'}[/], User: [magenta]{user}[/])  "
-            f"│  [bold cyan]Firewall Status:[/] {block_status}  │  [bold cyan]Duration:[/] [white]{duration}[/]\n"
+            f"│  [bold cyan]Trust:[/] {zt['badge']} ({zt['zone_desc']}){anom_str}\n"
+            f"[bold cyan]Firewall:[/] {block_status}  │  [bold cyan]Duration:[/] [white]{duration}[/]  │  "
             f"[bold cyan]Socket:[/] [bold blue]{proto}[/] {direction}  │  "
             f"Local: [white]{local_ip}:{local_port}[/] ➔ Remote: [bold yellow]{remote_ip}:{remote_port}[/] (Inode: {inode})\n"
             f"[bold cyan]Host/Geo:[/] [magenta]{geo}[/] │ rDNS: [white]{hostname}[/]  │  "
@@ -653,7 +835,6 @@ MyFirewallApp = GortFirewallApp
 
     def on_tabs_tab_activated(self, event: Tabs.TabActivated) -> None:
         self.active_tab = event.tab.id
-        # Clear table rows immediately on tab switch so it rebuilds cleanly
         table = self.query_one("#conns-table", DataTable)
         table.clear()
         self.refresh_dashboard()
@@ -696,11 +877,26 @@ MyFirewallApp = GortFirewallApp
     def action_tab_in(self) -> None:
         self.query_one("#tabs-bar", Tabs).active = "tab-in"
 
+    def action_tab_zt(self) -> None:
+        self.query_one("#tabs-bar", Tabs).active = "tab-zt"
+
     def action_tab_blocked(self) -> None:
         self.query_one("#tabs-bar", Tabs).active = "tab-blocked"
 
     def action_tab_ignored(self) -> None:
         self.query_one("#tabs-bar", Tabs).active = "tab-ignored"
+
+    def action_explain_ai(self) -> None:
+        """Opens AI Explain modal for highlighted connection."""
+        if not self.selected_conn:
+            self.notify("Please select a connection row to explain.", title="Gort AI", severity="warning")
+            return
+        self.push_screen(ExplainModal(self.selected_conn))
+
+    def action_ask_copilot(self) -> None:
+        """Opens interactive Ask Copilot dialog."""
+        conns = self.get_filtered_connections()
+        self.push_screen(CopilotModal(conns))
 
     def action_block(self) -> None:
         """Prompt or toggle block on selected IP."""
@@ -716,7 +912,7 @@ MyFirewallApp = GortFirewallApp
         """Reload firewall configuration from disk."""
         core.load_config()
         self.refresh_dashboard()
-        self.notify("Configuration reloaded from disk.", title="MyFirewall")
+        self.notify("Configuration reloaded from disk.", title="Gort Firewall")
 
     def action_help(self) -> None:
         """Show keyboard shortcuts and help modal."""
@@ -729,6 +925,9 @@ MyFirewallApp = GortFirewallApp
         self.exit()
 
 
+MyFirewallApp = GortFirewallApp
+
+
 # --- Application Entry Point ---
 
 def main():
@@ -736,7 +935,7 @@ def main():
     core.start_core_threads()
     time.sleep(0.3)
 
-    app = MyFirewallApp()
+    app = GortFirewallApp()
     try:
         app.run()
     finally:

@@ -90,10 +90,10 @@ def draw_infographic():
 
     # Tier 2 Modules
     t2_items = [
-        ("Process Resolver (PID / Exe)", "Maps socket inodes to /proc/<PID>/fd\nExtracts full binary path, cmdline & user", cyan),
-        ("Async GeoIP & rDNS Queue", "Non-blocking background worker pool\nResolves IP country & domain hostname", emerald),
-        ("10-Second Transient Memory", "Preserves short-lived tracking beacons\nand micro-connections for forensic review", amber),
-        ("Policy & History Auditor", "Persists rules in ~/.config/myfirewall/\nFull audit trail in connection_history.log", electric_blue)
+        ("Zero-Trust Risk Engine", "Continuous score (0-100), Micro-segmentation\nZones 1-5, and heuristic anomaly detection", amber),
+        ("Process Resolver & Inode Map", "Maps sockets to /proc/<PID>/fd & status\nExtracts full binary path, cmdline & user", cyan),
+        ("Antigravity AI Copilot", "Natural language threat triage & plain English\nflow explanations powered by Google Gemini", emerald),
+        ("10s Transient Memory & Audit", "Catches micro-bursts & ephemeral beacons\nFull audit trail in connection_history.log", electric_blue)
     ]
     for i, (heading, desc, color) in enumerate(t2_items):
         by = c2_y + c2_h - 125 - i * 135
@@ -119,10 +119,10 @@ def draw_infographic():
 
     # Tier 3 Modules
     t3_items = [
-        ("Non-Rolling Virtual DataTable", "Alternate screen buffer with keyboard (↑/↓)\nand mouse scroll. Zero viewport rolling", cyan),
-        ("Master-Detail Inspector", "Real-time inspection drawer: PID, args,\nsocket state, inode, bandwidth, and host", emerald),
-        ("Instant Substring Filter (/)", "Live multi-field search across process,\nremote IP, port, protocol, and hostname", amber),
-        ("One-Touch Hotkey Actions", "[B] Toggle Block IP  |  [I] Ignore Process\n[1-5] Category Tabs  |  [R] Reload  |  [Q] Quit", coral)
+        ("Zero-Trust Risk Badging", "Real-time [TRUST: 95] / [SUSPECT: 30]\nvisual traffic-light indicators in live table", emerald),
+        ("One-Key AI Explain ([E])", "Instant plain-English safety breakdown\nfor non-technical users and analysts", cyan),
+        ("Interactive Copilot ([A] / [Space])", "Natural language Q&A security assistant\nwith real-time advice and firewall controls", amber),
+        ("One-Touch Netfilter Drop ([B])", "Zero-overhead kernel packet drops\nCategory Tabs [1-6], Search [/], Reload [R]", coral)
     ]
     for i, (heading, desc, color) in enumerate(t3_items):
         by = c3_y + c3_h - 125 - i * 135

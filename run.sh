@@ -92,11 +92,12 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         -t|--test)
-            echo -e "${CYAN}[INFO] Running MyFirewall test suite...${NC}"
+            echo -e "${CYAN}[INFO] Running Gort Firewall test suite...${NC}"
             "$PYTHON_BIN" test_network_monitor.py
             "$PYTHON_BIN" test_firewall_manager.py
             "$PYTHON_BIN" test_connection_history.py
             "$PYTHON_BIN" test_event_monitors.py
+            "$PYTHON_BIN" test_zero_trust.py
             echo -e "${GREEN}[OK] All tests passed successfully!${NC}"
             exit 0
             ;;
