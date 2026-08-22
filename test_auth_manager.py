@@ -1,18 +1,18 @@
 """
-Unit tests for GoogleAuthManager and OAuth loopback sign-in logic.
+Unit tests for GoogleAuthManager dynamic model discovery and API key manager.
 """
 
 import os
 import json
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import auth_manager as am
 
 
 class TestGoogleAuthManager(unittest.TestCase):
-    """Test suite for authentication management."""
+    """Test suite for authentication and dynamic model discovery management."""
 
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
@@ -46,11 +46,30 @@ class TestGoogleAuthManager(unittest.TestCase):
     def test_save_and_detect_api_key(self):
         """Verify saving and detecting API keys from config.json."""
         auth_mgr = am.GoogleAuthManager()
-        auth_mgr.save_api_key("AIzaSyManualConfigKey987654321")
+        auth_mgr.save_api_key("AIzaSyManualConfigKey987654321", active_model="gemini-3.1-flash-lite")
 
         is_auth, desc = auth_mgr.is_authenticated()
         self.assertTrue(is_auth)
-        self.assertIn("Saved Gemini Key", desc)
+        self.assertIn("Saved Key", desc)
+        self.assertEqual(auth_mgr.get_active_model(), "gemini-3.1-flash-lite")
+
+    def test_dynamic_flash_model_filtering(self):
+        """Verify dynamic filtering of models from Google ModelService."""
+        auth_mgr = am.GoogleAuthManager()
+        mock_models = [
+            {"name": "models/gemini-2.5-flash", "supportedGenerationMethods": ["generateContent"]},
+            {"name": "models/gemini-3.5-flash", "supportedGenerationMethods": ["generateContent"]},
+            {"name": "models/gemini-flash-image", "supportedGenerationMethods": ["generateContent"]},
+            {"name": "models/embedding-001", "supportedGenerationMethods": ["embedContent"]},
+        ]
+        with patch.object(auth_mgr, 'list_all_models', return_value=mock_models):
+            flash_models = auth_mgr.get_flash_models("dummy_key")
+            self.assertIn("gemini-2.5-flash", flash_models)
+            self.assertIn("gemini-3.5-flash", flash_models)
+            # Image-only models should be excluded
+            self.assertNotIn("gemini-flash-image", flash_models)
+            # Embedding models should be excluded
+            self.assertNotIn("embedding-001", flash_models)
 
     def test_oauth_session_persistence(self):
         """Verify OAuth session saving and detection."""

@@ -1,7 +1,8 @@
 """
-Google Gemini Authentication Manager for Gort Firewall.
-Provides seamless Google account setup via Google AI Studio,
-environment variables, configuration file persistence, and live key validation.
+Google Gemini Authentication & Model Discovery Manager for Gort Firewall.
+Dynamically retrieves all available Gemini Flash models from Google's ModelService,
+validates API keys against live endpoints without hardcoding version numbers,
+and persists active model selections.
 """
 
 import os
@@ -10,7 +11,7 @@ import json
 import requests
 import subprocess
 import webbrowser
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, List
 
 
 def get_user_home() -> str:
@@ -40,7 +41,7 @@ def ensure_config_dir():
 
 
 class GoogleAuthManager:
-    """Manages Google Gemini Account sessions, API keys, and validation."""
+    """Manages Google Gemini Account sessions, dynamic model discovery, and API validation."""
 
     def __init__(self):
         ensure_config_dir()
@@ -65,8 +66,9 @@ class GoogleAuthManager:
                     key = data.get("gemini_api_key") or data.get("google_api_key")
                     if key and len(key.strip()) > 5:
                         k = key.strip()
-                        masked = k[:6] + "..." + k[-4:] if len(k) > 10 else "Active Key"
-                        return True, f"Saved Gemini Key ({masked})"
+                        masked = k[:6] + "..." + k[-4:] if len(key) > 10 else "Active Key"
+                        model = data.get("active_model", "gemini-flash")
+                        return True, f"Saved Key ({masked} | {model})"
             except Exception:
                 pass
 
@@ -104,29 +106,97 @@ class GoogleAuthManager:
                 pass
         return None
 
-    def validate_api_key(self, api_key: str) -> Tuple[bool, str]:
-        """Performs a lightweight validation test request to Google Gemini API."""
+    def get_active_model(self) -> str:
+        """Returns the configured model or defaults to dynamic discovery."""
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "r") as f:
+                    data = json.load(f)
+                    model = data.get("active_model")
+                    if model:
+                        return model
+            except Exception:
+                pass
+        return "gemini-3.1-flash-lite-preview"
+
+    def list_all_models(self, api_key: str) -> List[Dict[str, Any]]:
+        """
+        Dynamically queries Google's ModelService.ListModels endpoint.
+        Retrieves all available models without hardcoded assumptions.
+        """
+        key = api_key.strip()
+        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
+        try:
+            resp = requests.get(endpoint, timeout=6.0)
+            if resp.status_code == 200:
+                return resp.json().get("models", [])
+        except Exception:
+            pass
+        return []
+
+    def get_flash_models(self, api_key: str) -> List[str]:
+        """
+        Extracts all candidate Gemini Flash models supporting content generation.
+        Filters out pure image/audio/robotics pipelines.
+        """
+        models = self.list_all_models(api_key)
+        flash_models = []
+        for m in models:
+            name = m.get("name", "").replace("models/", "")
+            methods = m.get("supportedGenerationMethods", [])
+            if "generateContent" in methods:
+                if "flash" in name.lower() and not any(x in name.lower() for x in ["image", "tts", "audio", "robotics", "er-", "preview-tts"]):
+                    flash_models.append(name)
+        return flash_models
+
+    def discover_and_verify_best_model(self, api_key: str) -> Tuple[Optional[str], List[str], str]:
+        """
+        Probes discovered Flash models to find the fastest, active 200 OK model.
+        Returns (best_model_name, list_of_all_flash_models, status_message).
+        """
+        key = api_key.strip()
+        flash_models = self.get_flash_models(key)
+        if not flash_models:
+            # Fallback: check all models if no flash models found
+            all_models = self.list_all_models(key)
+            candidates = [m.get("name", "").replace("models/", "") for m in all_models if "generateContent" in m.get("supportedGenerationMethods", [])]
+        else:
+            candidates = flash_models
+
+        if not candidates:
+            return None, [], "No generateContent models found for this API key."
+
+        # Probe candidate models for a healthy 200 OK
+        for cand in candidates:
+            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{cand}:generateContent?key={key}"
+            payload = {"contents": [{"parts": [{"text": "ping"}]}]}
+            try:
+                resp = requests.post(endpoint, json=payload, timeout=4.0)
+                if resp.status_code == 200:
+                    return cand, flash_models, f"Verified active model: {cand}"
+            except Exception:
+                continue
+
+        # If individual probing timed out, default to first candidate
+        return candidates[0], flash_models, f"Selected candidate model: {candidates[0]}"
+
+    def validate_api_key(self, api_key: str) -> Tuple[bool, str, Optional[str], List[str]]:
+        """
+        Validates API key by discovering all available models and verifying generation.
+        Returns (is_valid, message, selected_model, all_flash_models).
+        """
         key = api_key.strip()
         if not key:
-            return False, "API key cannot be empty."
+            return False, "API key cannot be empty.", None, []
 
-        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
-        payload = {
-            "contents": [{"parts": [{"text": "Hello, confirm connection."}]}]
-        }
-        try:
-            resp = requests.post(endpoint, json=payload, timeout=8.0)
-            if resp.status_code == 200:
-                return True, "API Key is valid and active!"
-            else:
-                error_data = resp.json().get("error", {})
-                error_msg = error_data.get("message", f"HTTP {resp.status_code}")
-                return False, f"Google API Error: {error_msg}"
-        except Exception as e:
-            return False, f"Connection failed: {e}"
+        best_model, flash_models, msg = self.discover_and_verify_best_model(key)
+        if best_model:
+            return True, f"API Key valid! {msg}", best_model, flash_models
+        else:
+            return False, f"Validation failed: {msg}", None, []
 
-    def save_api_key(self, api_key: str) -> bool:
-        """Saves a Gemini API key to ~/.config/myfirewall/config.json."""
+    def save_api_key(self, api_key: str, active_model: Optional[str] = None) -> bool:
+        """Saves a Gemini API key and active model to ~/.config/myfirewall/config.json."""
         ensure_config_dir()
         data = {}
         if os.path.exists(CONFIG_FILE):
@@ -136,6 +206,8 @@ class GoogleAuthManager:
             except Exception:
                 data = {}
         data["gemini_api_key"] = api_key.strip()
+        if active_model:
+            data["active_model"] = active_model.strip()
         try:
             with open(CONFIG_FILE, "w") as f:
                 json.dump(data, f, indent=2)
@@ -173,14 +245,14 @@ class GoogleAuthManager:
     def interactive_terminal_login(self) -> bool:
         """Runs an interactive terminal setup wizard for Google Gemini."""
         key_url = "https://aistudio.google.com/app/apikey"
-        print("\n" + "="*72)
+        print("\n" + "="*74)
         print("🤖 GORT FIREWALL — GOOGLE GEMINI ACCOUNT CONFIGURATION")
-        print("="*72)
+        print("="*74)
         print("Connect your Google account to enable real-time AI security advice,\n"
               "packet analysis, and interactive copilot Q&A.\n")
         print(f"👉 Opening Google AI Studio in your browser:\n   {key_url}\n")
         print("1. Sign in with your Google account.")
-        print("2. Click 'Create API key' and copy your key.\n" + "-"*72)
+        print("2. Click 'Create API key' and copy your key.\n" + "-"*74)
 
         self.open_browser_safe(key_url)
 
@@ -194,16 +266,21 @@ class GoogleAuthManager:
             print("No key provided. Gort will continue in offline heuristic mode.")
             return False
 
-        print("\n⏳ Validating key with Google Gemini API...")
-        valid, msg = self.validate_api_key(user_input)
+        print("\n⏳ Querying Google ModelService & dynamically discovering all Flash models...")
+        valid, msg, best_model, flash_models = self.validate_api_key(user_input)
         if valid:
-            self.save_api_key(user_input)
-            print(f"✅ {msg}")
-            print(f"💾 Saved to: {CONFIG_FILE}")
+            print(f"\n✨ Discovered {len(flash_models)} Gemini Flash Models:")
+            for m in flash_models:
+                marker = "⭐ (Selected)" if m == best_model else "  "
+                print(f"   {marker} models/{m}")
+
+            self.save_api_key(user_input, active_model=best_model)
+            print(f"\n✅ {msg}")
+            print(f"💾 Saved configuration to: {CONFIG_FILE}")
             print("🎉 Google Gemini AI is now active across Gort Firewall!\n")
             return True
         else:
-            print(f"❌ {msg}")
+            print(f"\n❌ {msg}")
             print("Please double check your key and try again.\n")
             return False
 

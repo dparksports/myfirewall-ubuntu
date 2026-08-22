@@ -561,11 +561,12 @@ class LoginModal(ModalScreen):
             status_widget.update("[bold cyan]⏳ Testing key with Google Gemini API...[/]")
 
             def do_validate():
-                valid, msg = auth_manager.validate_api_key(key_val)
+                valid, msg, best_model, flash_models = auth_manager.validate_api_key(key_val)
                 def update_ui():
                     if valid:
-                        auth_manager.save_api_key(key_val)
-                        status_widget.update(f"✅ [bold green]{msg}[/]\nKey saved to ~/.config/myfirewall/config.json")
+                        auth_manager.save_api_key(key_val, active_model=best_model)
+                        model_str = f" (Model: {best_model})" if best_model else ""
+                        status_widget.update(f"✅ [bold green]{msg}[/]{model_str}\nKey & model saved to ~/.config/myfirewall/config.json")
                         self.notify("Google Gemini AI is now active!", title="Connected", severity="information")
                     else:
                         status_widget.update(f"❌ [bold red]{msg}[/]\nPlease check the key and try again.")

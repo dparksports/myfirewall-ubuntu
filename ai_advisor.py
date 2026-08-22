@@ -44,8 +44,10 @@ def get_gemini_api_key() -> Optional[str]:
 
 
 def call_gemini_rest_api(api_key: str, prompt: str, system_instruction: str = "") -> Optional[str]:
-    """Directly queries the Google Gemini REST API using the user's API Key."""
-    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    """Directly queries the Google Gemini REST API using dynamic model resolution."""
+    import auth_manager as am
+    model = am.auth_manager.get_active_model()
+    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
     payload: Dict[str, Any] = {
         "contents": [
             {
@@ -61,7 +63,7 @@ def call_gemini_rest_api(api_key: str, prompt: str, system_instruction: str = ""
         }
 
     try:
-        resp = requests.post(endpoint, json=payload, timeout=5.0)
+        resp = requests.post(endpoint, json=payload, timeout=6.0)
         if resp.status_code == 200:
             res_json = resp.json()
             candidates = res_json.get("candidates", [])
@@ -69,6 +71,19 @@ def call_gemini_rest_api(api_key: str, prompt: str, system_instruction: str = ""
                 parts = candidates[0].get("content", {}).get("parts", [])
                 if parts:
                     return parts[0].get("text", "").strip()
+        elif resp.status_code in (404, 400):
+            # Model may have changed; dynamically re-discover best model
+            best_model, _, _ = am.auth_manager.discover_and_verify_best_model(api_key)
+            if best_model and best_model != model:
+                am.auth_manager.save_api_key(api_key, active_model=best_model)
+                retry_endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{best_model}:generateContent?key={api_key}"
+                retry_resp = requests.post(retry_endpoint, json=payload, timeout=6.0)
+                if retry_resp.status_code == 200:
+                    candidates = retry_resp.json().get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts:
+                            return parts[0].get("text", "").strip()
     except Exception:
         pass
     return None
