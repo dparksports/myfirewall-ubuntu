@@ -130,7 +130,7 @@ def draw_simplified_infographic():
     cmd_box = patches.FancyBboxPatch((135, 78), 900, 48, boxstyle="round,pad=4,rounding_size=6",
                                      facecolor='#030712', edgecolor=cyan, linewidth=1.2)
     ax.add_patch(cmd_box)
-    ax.text(155, 102, "git clone https://github.com/dparksports/gort-firewall.git && cd gort-firewall && sudo ./run.sh",
+    ax.text(155, 102, "git clone https://github.com/dparksports/myfirewall-ubuntu.git && cd gort-firewall && sudo&& cd gort-firewall && sudo cd myfirewall-ubuntu && sudo ./run.sh",
             fontsize=10.5, fontfamily='monospace', fontweight='bold', color='#a7ffeb')
 
     # Badges

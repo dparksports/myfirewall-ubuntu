@@ -24,8 +24,8 @@ Use the universal launcher script [run.sh](file:///home/aug20/myfirewall-linux/r
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/dparksports/gort-firewall.git
-cd gort-firewall
+git clone https://github.com/dparksports/myfirewall-ubuntu.git
+cd myfirewall-ubuntu
 
 # 2. Launch in Active Security Mode (Netfilter Kernel Blocking + AI + Autonomous Sentinel)
 sudo ./run.sh
@@ -125,7 +125,7 @@ Execute the comprehensive automated test suite (all 6 modules):
 ## 📂 Repository Structure
 
 ```text
-gort-firewall/
+myfirewall-ubuntu/
 ├── run.sh                          # Universal launcher & environment manager
 ├── gort.sh                         # Gort execution entrypoint alias
 ├── myfirewall2.py                  # Main Textual TUI frontend controller (~340 lines)
@@ -157,5 +157,5 @@ gort-firewall/
 ## 📜 License & Craftsmanship
 
 * **License:** Apache License 2.0.
-* **Repository:** [https://github.com/dparksports/gort-firewall](https://github.com/dparksports/gort-firewall)
+* **Repository:** [https://github.com/dparksports/myfirewall-ubuntu](https://github.com/dparksports/myfirewall-ubuntu)
 * **Craftsmanship:** *Made with ❤️ in California.*
